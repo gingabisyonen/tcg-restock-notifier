@@ -16,7 +16,22 @@ targets:
     keyword: "抽選"
     alert_on: "appear"
 
-  # - name: "愛知のショップ (仮)"
-  #   url: "https://example.com/products/xxxx"
-  #   keyword: "SOLD OUT"
-  #   alert_on: "disappear"
+  - name: "カードラボ 名古屋駅前店"
+    url: "https://www.c-labo.jp/shop/nagoyaekimae/"
+    keyword: "抽選"
+    alert_on: "appear"
+
+  - name: "ホビーステーション ニュース"
+    url: "https://www.hbst.net/result/?category=news"
+    keyword: "抽選"
+    alert_on: "appear"
+
+  - name: "プレイズ 公式通販"
+    url: "https://playze.jp/"
+    keyword: "抽選"
+    alert_on: "appear"
+
+  - name: "TCGshop193"
+    url: "https://193tcg.com/"
+    keyword: "抽選"
+    alert_on: "appear"
