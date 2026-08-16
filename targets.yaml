@@ -31,7 +31,7 @@ targets:
     parser: "pokeca_navi"
     url: "https://pokeca-navi.jp/lotteries/"
     area_filter: "愛知"
-    game_label: "ポケモンカード"
+    game_label: "ポケカ"
     bot_name: "ポケカ抽選Bot"
     exclude_keywords: ["Gジャン", "QUOカード", "コラボ", "Tシャツ", "ぬいぐるみ", "フィギュア"]
 
@@ -40,7 +40,7 @@ targets:
     parser: "cardchusen"
     url: "https://cardchusen.com/onepiece"
     area_filter: "aichi"
-    game_label: "ワンピースカード"
+    game_label: "ワンピース"
     bot_name: "ワンピース抽選Bot"
 
   - name: "カード抽選まとめ - ドラゴンボール (愛知配送対応分)"

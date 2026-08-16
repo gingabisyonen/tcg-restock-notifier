@@ -255,7 +255,7 @@ def check_lottery_list_target(target: dict, state: dict) -> bool:
             if info["deadline"]:
                 memo = f"締切: {info['deadline']} / {memo}"
             try:
-                append_lottery_row(game_label, info["product"], info["shop"], memo)
+                append_lottery_row(game_label, info["product"], info["shop"], memo, info["summary"])
             except Exception as exc:
                 print(f"[WARN] failed to append to spreadsheet: {exc}", file=sys.stderr)
 
