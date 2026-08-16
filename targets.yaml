@@ -33,7 +33,7 @@ targets:
     area_filter: "愛知"
     game_label: "ポケカ"
     bot_name: "ポケカ抽選Bot"
-    exclude_keywords: ["Gジャン", "QUOカード", "コラボ", "Tシャツ", "ぬいぐるみ", "フィギュア"]
+    exclude_keywords: ["Gジャン", "QUOカード", "コラボ", "Tシャツ", "ぬいぐるみ", "フィギュア", "九州"]
 
   - name: "カード抽選まとめ - ワンピース (愛知配送対応分)"
     type: "lottery_list"
