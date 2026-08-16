@@ -135,6 +135,7 @@ def check_lottery_list_target(target: dict, state: dict) -> bool:
     新しく追加された抽選エントリーごとに通知する。戻り値は state が変化したか。"""
     name = target["name"]
     url = target["url"]
+    area_filter = target.get("area_filter")
 
     html = fetch_html(url)
     if html is None:
@@ -147,12 +148,15 @@ def check_lottery_list_target(target: dict, state: dict) -> bool:
         product_el = card.select_one(".lottery-card__product")
         if not shop_el or not product_el:
             continue
+        area_el = card.select_one(".lottery-card__area-pill")
+        area = area_el.get_text(strip=True) if area_el else ""
+        if area_filter and area_filter not in area:
+            continue
         shop = shop_el.get_text(strip=True)
         product = product_el.get_text(strip=True)
-        area_el = card.select_one(".lottery-card__area-pill")
         link_el = card.select_one(".lottery-card__apply-button")
         entries[f"{shop} / {product}"] = {
-            "area": area_el.get_text(strip=True) if area_el else "",
+            "area": area,
             "link": link_el["href"] if link_el and link_el.has_attr("href") else url,
         }
 

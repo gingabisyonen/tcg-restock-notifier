@@ -9,15 +9,17 @@
 #
 # 種類2: type: "lottery_list" = 全国の抽選まとめサイト(ポケカ抽選図鑑形式)を監視
 #   受付中の抽選一覧を丸ごと取得し、新しく追加されたエントリーごとに個別通知する。
-#   店舗を問わず「どこかで抽選が始まったら」を広く拾うためのもの。
+#   area_filter: 指定すると、エリア表記にその文字列を含むものだけに絞り込む(例: "愛知")。
+#                省略すると全国すべてが対象になる。
 #
 # 新しいショップを追加するときは、このリストに1エントリ追記するだけでOK。
 # 実際のページのHTML/キーワードを見て appear/disappear と keyword は調整してください。
 
 targets:
-  - name: "ポケカ抽選図鑑 (全国抽選まとめ)"
+  - name: "ポケカ抽選図鑑 (愛知の抽選)"
     type: "lottery_list"
     url: "https://pokeca-navi.jp/lotteries/"
+    area_filter: "愛知"
 
   - name: "ポケモンセンターオンライン 新商品"
     url: "https://www.pokemoncenter-online.com/search/?prefn1=releaseType&prefv1=1&srule=top-new-product"
