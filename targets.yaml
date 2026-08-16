@@ -1,5 +1,8 @@
 # 監視対象の定義
 #
+# 共通:
+#   bot_name: Discordの送信者名(Webhook表示名)。ゲームごとに変えると通知バナーで一目で分かる。
+#
 # 種類1: type省略(デフォルト) = 単一ページのキーワード監視
 #   name:        通知メッセージに表示する名前
 #   url:         監視するページのURL
@@ -9,7 +12,8 @@
 #
 # 種類2: type: "lottery_list" = 全国の抽選まとめサイトを監視
 #   受付中の抽選一覧を丸ごと取得し、新しく追加されたエントリーごとに個別通知する。
-#   parser: "pokeca_navi"(ポケカ専用) または "cardchusen"(ポケカ/ワンピ/遊戯王/ドラゴンボール対応)。
+#   parser:      "pokeca_navi"(ポケカ専用) または "cardchusen"(ポケカ/ワンピ/遊戯王/ドラゴンボール対応)。
+#   game_label:  通知本文に表示するゲーム名。
 #   area_filter: 指定すると絞り込む。parser により表記が違うので注意。
 #                - pokeca_navi: 日本語表記の部分一致 (例: "愛知")
 #                - cardchusen : ローマ字の県スラッグ (例: "aichi")。ただし店頭のみの抽選は
@@ -25,60 +29,75 @@ targets:
     parser: "pokeca_navi"
     url: "https://pokeca-navi.jp/lotteries/"
     area_filter: "愛知"
+    game_label: "ポケモンカード"
+    bot_name: "ポケカ抽選Bot"
 
   - name: "カード抽選まとめ - ワンピース (愛知配送対応分)"
     type: "lottery_list"
     parser: "cardchusen"
     url: "https://cardchusen.com/onepiece"
     area_filter: "aichi"
+    game_label: "ワンピースカード"
+    bot_name: "ワンピース抽選Bot"
 
   - name: "カード抽選まとめ - ドラゴンボール (愛知配送対応分)"
     type: "lottery_list"
     parser: "cardchusen"
     url: "https://cardchusen.com/dragonball"
     area_filter: "aichi"
+    game_label: "ドラゴンボール"
+    bot_name: "ドラゴンボール抽選Bot"
 
   - name: "ポケモンセンターオンライン 新商品"
     url: "https://www.pokemoncenter-online.com/search/?prefn1=releaseType&prefv1=1&srule=top-new-product"
     keyword: "抽選"
     alert_on: "appear"
+    bot_name: "ポケカ抽選Bot"
 
   - name: "カードラボ 名古屋駅前店"
     url: "https://www.c-labo.jp/shop/nagoyaekimae/"
     keyword: "抽選"
     alert_on: "appear"
+    bot_name: "TCG抽選Bot"
 
   - name: "ホビーステーション ニュース"
     url: "https://www.hbst.net/result/?category=news"
     keyword: "抽選"
     alert_on: "appear"
+    bot_name: "TCG抽選Bot"
 
   - name: "プレイズ 公式通販"
     url: "https://playze.jp/"
     keyword: "抽選"
     alert_on: "appear"
+    bot_name: "TCG抽選Bot"
 
   - name: "TCGshop193"
     url: "https://193tcg.com/"
     keyword: "抽選"
     alert_on: "appear"
+    bot_name: "TCG抽選Bot"
 
   - name: "三洋堂書店 抽選販売"
     url: "https://www.sanyodo.co.jp/news/evt_lottery-sale"
     keyword: "現在開催中の抽選販売はありません"
     alert_on: "disappear"
+    bot_name: "ポケカ抽選Bot"
 
   - name: "イエローサブマリン ポケモンカード"
     url: "https://shop.yellowsubmarine.co.jp/products/list?category_id=118"
     keyword: "抽選"
     alert_on: "appear"
+    bot_name: "ポケカ抽選Bot"
 
   - name: "トイザらス ポケモン"
     url: "https://www.toysrus.co.jp/ja-jp/pokemon/"
     keyword: "抽選"
     alert_on: "appear"
+    bot_name: "ポケカ抽選Bot"
 
   - name: "ヨドバシ.com ポケモンカード"
     url: "https://www.yodobashi.com/category/141001/141651/141662/141663/m0000005115/"
     keyword: "抽選"
     alert_on: "appear"
+    bot_name: "ポケカ抽選Bot"

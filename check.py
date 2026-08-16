@@ -102,6 +102,7 @@ def check_keyword_target(target: dict, state: dict) -> bool:
     url = target["url"]
     keyword = target["keyword"]
     alert_on = target["alert_on"]
+    bot_name = target.get("bot_name")
 
     text = fetch_text(url)
     if text is None:
@@ -119,7 +120,8 @@ def check_keyword_target(target: dict, state: dict) -> bool:
         if triggered:
             print(f"[ALERT] {name}: {alert_on} condition met")
             send_discord_message(
-                f"🔔 **{name}**\n条件(「{keyword}」が{alert_on}) が成立しました。\n{url}"
+                f"🔔 **{name}**\n条件(「{keyword}」が{alert_on}) が成立しました。\n{url}",
+                username=bot_name,
             )
 
     if previous != present:
@@ -144,10 +146,17 @@ def _parse_pokeca_navi(soup: BeautifulSoup, url: str, area_filter: str | None) -
             continue
         shop = shop_el.get_text(strip=True)
         product = product_el.get_text(strip=True)
+        deadline_el = card.select_one(".lottery-card__deadline-urgent")
+        method_el = card.select_one(".lottery-card__method-pill")
+        summary_el = card.select_one(".lottery-card__application-summary-text")
         link_el = card.select_one(".lottery-card__apply-button")
         entries[f"{shop} / {product}"] = {
-            "label": f"{shop} / {product}",
+            "shop": shop,
+            "product": product,
             "area": area,
+            "deadline": deadline_el.get_text(strip=True) if deadline_el else "",
+            "method": method_el.get_text(strip=True) if method_el else "",
+            "summary": summary_el.get_text(strip=True) if summary_el else "",
             "link": link_el["href"] if link_el and link_el.has_attr("href") else url,
         }
     return entries
@@ -166,11 +175,17 @@ def _parse_cardchusen(soup: BeautifulSoup, url: str, area_filter: str | None) ->
             continue
         shop = store_el.get_text(strip=True)
         product = store_el.get("title", "") or "(商品名不明)"
+        due_el = card.select_one(".board-card__due")
+        how_el = card.select_one(".board-card__how")
         cta_el = card.select_one(".board-card__cta")
         entry_id = card.get("id") or f"{shop} / {product}"
         entries[entry_id] = {
-            "label": f"{shop} / {product}",
+            "shop": shop,
+            "product": product,
             "area": area,
+            "deadline": due_el.get_text(strip=True).removeprefix("締切").strip() if due_el else "",
+            "method": how_el.get("data-method-label", "") if how_el else "",
+            "summary": how_el.get("data-method-note", "") if how_el else "",
             "link": cta_el["href"] if cta_el and cta_el.has_attr("href") else url,
         }
     return entries
@@ -188,6 +203,8 @@ def check_lottery_list_target(target: dict, state: dict) -> bool:
     name = target["name"]
     url = target["url"]
     area_filter = target.get("area_filter")
+    game_label = target.get("game_label", "TCG")
+    bot_name = target.get("bot_name")
     parser = PARSERS[target.get("parser", "pokeca_navi")]
 
     html = fetch_html(url)
@@ -206,10 +223,15 @@ def check_lottery_list_target(target: dict, state: dict) -> bool:
     else:
         for entry_id in sorted(current_ids - previous_ids):
             info = entries[entry_id]
-            print(f"[ALERT] {name}: new lottery - {info['label']}")
+            print(f"[ALERT] {name}: new lottery - {info['shop']} / {info['product']}")
             send_discord_message(
-                f"🔔 **新しい抽選を検知**\n{info['label']}\n"
-                f"エリア: {info['area'] or '不明'}\n{info['link']}"
+                f"🎴【{game_label}】{info['product']} の抽選\n"
+                f"店舗: {info['shop']}\n"
+                f"抽選期限: {info['deadline'] or '不明'}\n"
+                f"応募方法: {info['method'] or '不明'}\n"
+                f"詳細: {info['summary'] or 'なし'}\n"
+                f"{info['link']}",
+                username=bot_name,
             )
 
     if previous_ids != current_ids:
