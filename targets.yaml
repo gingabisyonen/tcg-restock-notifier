@@ -1,0 +1,22 @@
+# 監視対象の定義
+#
+# 各エントリ:
+#   name:        通知メッセージに表示する名前
+#   url:         監視するページのURL
+#   keyword:     監視するキーワード(文字列)
+#   alert_on:    "appear"    = ページ内にキーワードが「新たに出現」したら通知(例: 抽選受付開始、在庫復活)
+#                "disappear" = ページ内にキーワードが「消えた」ら通知(例: "売り切れ"表示が消えた = 買える)
+#
+# 新しいショップを追加するときは、このリストに1エントリ追記するだけでOK。
+# 実際のページのHTML/キーワードを見て appear/disappear と keyword は調整してください。
+
+targets:
+  - name: "ポケモンセンターオンライン 新商品"
+    url: "https://www.pokemoncenter-online.com/search/?prefn1=releaseType&prefv1=1&srule=top-new-product"
+    keyword: "抽選"
+    alert_on: "appear"
+
+  # - name: "愛知のショップ (仮)"
+  #   url: "https://example.com/products/xxxx"
+  #   keyword: "SOLD OUT"
+  #   alert_on: "disappear"
