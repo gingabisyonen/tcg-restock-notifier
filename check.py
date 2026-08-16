@@ -142,7 +142,8 @@ def _parse_pokeca_navi(soup: BeautifulSoup, url: str, area_filter: str | None) -
             continue
         area_el = card.select_one(".lottery-card__area-pill")
         area = area_el.get_text(strip=True) if area_el else ""
-        if area_filter and area_filter not in area:
+        # "全国"(郵送などで全国どこからでも応募できる抽選)は area_filter の値に関わらず常に含める
+        if area_filter and area_filter not in area and area != "全国":
             continue
         shop = shop_el.get_text(strip=True)
         product = product_el.get_text(strip=True)
