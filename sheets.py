@@ -15,10 +15,11 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 RESPONSIBLE_PERSON = "のり"
 
 # ゲームラベル(Masterシート「種類」列の表記と一致させる) -> Masterシートの商品名リストの列番号(A=1)
+# C列に「店舗」列を追加したため、ポケカ以降は1列ずつ右にずれている
 MASTER_GAME_COLUMNS = {
-    "ポケカ": 3,        # C列
-    "ワンピース": 4,     # D列
-    "ドラゴンボール": 5,  # E列
+    "ポケカ": 4,        # D列
+    "ワンピース": 5,     # E列
+    "ドラゴンボール": 6,  # F列
 }
 
 ANNOUNCE_DATE_PATTERN = re.compile(r"(?:当選発表|抽選結果|結果発表)\D{0,10}?(\d{1,2})月(\d{1,2})日")
