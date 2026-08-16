@@ -62,32 +62,121 @@ def close_browser() -> None:
         _playwright = None
 
 
-def fetch_text_playwright(url: str) -> str | None:
+def fetch_html_playwright(url: str) -> str | None:
     try:
         browser = _get_browser()
         page = browser.new_page(user_agent=HEADERS["User-Agent"], locale="ja-JP")
         page.goto(url, timeout=30000, wait_until="domcontentloaded")
         html = page.content()
         page.close()
+        return html
     except Exception as exc:
         print(f"[WARN] headless browser failed to fetch {url}: {exc}", file=sys.stderr)
         return None
-    soup = BeautifulSoup(html, "html.parser")
-    return soup.get_text(separator=" ", strip=True)
 
 
-def fetch_text(url: str) -> str | None:
+def fetch_html(url: str) -> str | None:
     try:
         resp = requests.get(url, headers=HEADERS, timeout=20)
         resp.raise_for_status()
+        return resp.text
     except requests.RequestException as exc:
         print(
             f"[WARN] plain request failed for {url} ({exc}); retrying with headless browser",
             file=sys.stderr,
         )
-        return fetch_text_playwright(url)
-    soup = BeautifulSoup(resp.text, "html.parser")
+        return fetch_html_playwright(url)
+
+
+def fetch_text(url: str) -> str | None:
+    html = fetch_html(url)
+    if html is None:
+        return None
+    soup = BeautifulSoup(html, "html.parser")
     return soup.get_text(separator=" ", strip=True)
+
+
+def check_keyword_target(target: dict, state: dict) -> bool:
+    """既存の「単一ページのキーワード出現/消失」監視。戻り値は state が変化したか。"""
+    name = target["name"]
+    url = target["url"]
+    keyword = target["keyword"]
+    alert_on = target["alert_on"]
+
+    text = fetch_text(url)
+    if text is None:
+        return False
+
+    present = keyword in text
+    previous = state.get(name)
+
+    if previous is None:
+        print(f"[INIT] {name}: baseline recorded (present={present})")
+    else:
+        triggered = (alert_on == "appear" and not previous and present) or (
+            alert_on == "disappear" and previous and not present
+        )
+        if triggered:
+            print(f"[ALERT] {name}: {alert_on} condition met")
+            send_discord_message(
+                f"🔔 **{name}**\n条件(「{keyword}」が{alert_on}) が成立しました。\n{url}"
+            )
+
+    if previous != present:
+        state[name] = present
+        return True
+
+    print(f"[OK] {name}: no change (present={present})")
+    return False
+
+
+def check_lottery_list_target(target: dict, state: dict) -> bool:
+    """ポケカ抽選図鑑(pokeca-navi.jp)形式の「受付中抽選一覧」ページを監視し、
+    新しく追加された抽選エントリーごとに通知する。戻り値は state が変化したか。"""
+    name = target["name"]
+    url = target["url"]
+
+    html = fetch_html(url)
+    if html is None:
+        return False
+
+    soup = BeautifulSoup(html, "html.parser")
+    entries: dict[str, dict[str, str]] = {}
+    for card in soup.select(".lottery-card-open"):
+        shop_el = card.select_one(".lottery-card__shop")
+        product_el = card.select_one(".lottery-card__product")
+        if not shop_el or not product_el:
+            continue
+        shop = shop_el.get_text(strip=True)
+        product = product_el.get_text(strip=True)
+        area_el = card.select_one(".lottery-card__area-pill")
+        link_el = card.select_one(".lottery-card__apply-button")
+        entries[f"{shop} / {product}"] = {
+            "area": area_el.get_text(strip=True) if area_el else "",
+            "link": link_el["href"] if link_el and link_el.has_attr("href") else url,
+        }
+
+    state_key = f"__list__{name}"
+    previous_ids = set(state.get(state_key) or [])
+    current_ids = set(entries.keys())
+
+    if state_key not in state:
+        print(f"[INIT] {name}: baseline recorded ({len(current_ids)} open lotteries)")
+    else:
+        for entry_id in sorted(current_ids - previous_ids):
+            info = entries[entry_id]
+            print(f"[ALERT] {name}: new lottery - {entry_id}")
+            send_discord_message(
+                f"🔔 **新しい抽選を検知**\n{entry_id}\n"
+                f"エリア: {info['area'] or '不明'}\n{info['link']}"
+            )
+
+    if previous_ids != current_ids:
+        state[state_key] = sorted(current_ids)
+        return True
+
+    print(f"[OK] {name}: no change ({len(current_ids)} open lotteries)")
+    return False
 
 
 def main() -> None:
@@ -97,35 +186,13 @@ def main() -> None:
 
     try:
         for target in targets:
-            name = target["name"]
-            url = target["url"]
-            keyword = target["keyword"]
-            alert_on = target["alert_on"]
-
-            text = fetch_text(url)
-            if text is None:
-                continue
-
-            present = keyword in text
-            previous = state.get(name)
-
-            if previous is None:
-                print(f"[INIT] {name}: baseline recorded (present={present})")
+            target_type = target.get("type", "keyword")
+            if target_type == "lottery_list":
+                if check_lottery_list_target(target, state):
+                    changed = True
             else:
-                triggered = (alert_on == "appear" and not previous and present) or (
-                    alert_on == "disappear" and previous and not present
-                )
-                if triggered:
-                    print(f"[ALERT] {name}: {alert_on} condition met")
-                    send_discord_message(
-                        f"🔔 **{name}**\n条件(「{keyword}」が{alert_on}) が成立しました。\n{url}"
-                    )
-
-            if previous != present:
-                state[name] = present
-                changed = True
-            else:
-                print(f"[OK] {name}: no change (present={present})")
+                if check_keyword_target(target, state):
+                    changed = True
     finally:
         close_browser()
 
