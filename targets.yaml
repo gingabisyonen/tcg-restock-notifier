@@ -14,7 +14,7 @@ targets:
   - name: "ポケモンセンターオンライン 新商品"
     url: "https://www.pokemoncenter-online.com/search/?prefn1=releaseType&prefv1=1&srule=top-new-product"
     keyword: "抽選"
-    alert_on: "disappear"
+    alert_on: "appear"
 
   # - name: "愛知のショップ (仮)"
   #   url: "https://example.com/products/xxxx"
