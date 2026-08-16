@@ -130,18 +130,8 @@ def check_keyword_target(target: dict, state: dict) -> bool:
     return False
 
 
-def check_lottery_list_target(target: dict, state: dict) -> bool:
-    """ポケカ抽選図鑑(pokeca-navi.jp)形式の「受付中抽選一覧」ページを監視し、
-    新しく追加された抽選エントリーごとに通知する。戻り値は state が変化したか。"""
-    name = target["name"]
-    url = target["url"]
-    area_filter = target.get("area_filter")
-
-    html = fetch_html(url)
-    if html is None:
-        return False
-
-    soup = BeautifulSoup(html, "html.parser")
+def _parse_pokeca_navi(soup: BeautifulSoup, url: str, area_filter: str | None) -> dict[str, dict[str, str]]:
+    """pokeca-navi.jp形式: 受付中カードに .lottery-card-open クラスが付く。エリアは日本語表記。"""
     entries: dict[str, dict[str, str]] = {}
     for card in soup.select(".lottery-card-open"):
         shop_el = card.select_one(".lottery-card__shop")
@@ -156,9 +146,56 @@ def check_lottery_list_target(target: dict, state: dict) -> bool:
         product = product_el.get_text(strip=True)
         link_el = card.select_one(".lottery-card__apply-button")
         entries[f"{shop} / {product}"] = {
+            "label": f"{shop} / {product}",
             "area": area,
             "link": link_el["href"] if link_el and link_el.has_attr("href") else url,
         }
+    return entries
+
+
+def _parse_cardchusen(soup: BeautifulSoup, url: str, area_filter: str | None) -> dict[str, dict[str, str]]:
+    """cardchusen.com形式: article.board-card 単位。エリアは data-area 属性にローマ字の県名が
+    スペース区切りで入る(店頭のみの抽選は空のことが多い)。area_filter はローマ字("aichi"等)で指定する。"""
+    entries: dict[str, dict[str, str]] = {}
+    for card in soup.select("article.board-card"):
+        area = card.get("data-area", "")
+        if area_filter and area_filter not in area.split():
+            continue
+        store_el = card.select_one(".board-card__store")
+        if not store_el:
+            continue
+        shop = store_el.get_text(strip=True)
+        product = store_el.get("title", "") or "(商品名不明)"
+        cta_el = card.select_one(".board-card__cta")
+        entry_id = card.get("id") or f"{shop} / {product}"
+        entries[entry_id] = {
+            "label": f"{shop} / {product}",
+            "area": area,
+            "link": cta_el["href"] if cta_el and cta_el.has_attr("href") else url,
+        }
+    return entries
+
+
+PARSERS = {
+    "pokeca_navi": _parse_pokeca_navi,
+    "cardchusen": _parse_cardchusen,
+}
+
+
+def check_lottery_list_target(target: dict, state: dict) -> bool:
+    """抽選まとめサイトの「受付中一覧」ページを監視し、新しく追加された抽選エントリーごとに
+    通知する。対応サイトごとにHTML構造が違うため PARSERS で切り替える。戻り値は state が変化したか。"""
+    name = target["name"]
+    url = target["url"]
+    area_filter = target.get("area_filter")
+    parser = PARSERS[target.get("parser", "pokeca_navi")]
+
+    html = fetch_html(url)
+    if html is None:
+        return False
+
+    soup = BeautifulSoup(html, "html.parser")
+    entries = parser(soup, url, area_filter)
 
     state_key = f"__list__{name}"
     previous_ids = set(state.get(state_key) or [])
@@ -169,9 +206,9 @@ def check_lottery_list_target(target: dict, state: dict) -> bool:
     else:
         for entry_id in sorted(current_ids - previous_ids):
             info = entries[entry_id]
-            print(f"[ALERT] {name}: new lottery - {entry_id}")
+            print(f"[ALERT] {name}: new lottery - {info['label']}")
             send_discord_message(
-                f"🔔 **新しい抽選を検知**\n{entry_id}\n"
+                f"🔔 **新しい抽選を検知**\n{info['label']}\n"
                 f"エリア: {info['area'] or '不明'}\n{info['link']}"
             )
 

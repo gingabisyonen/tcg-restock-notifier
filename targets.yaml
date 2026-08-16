@@ -7,10 +7,14 @@
 #   alert_on:    "appear"    = ページ内にキーワードが「新たに出現」したら通知(例: 抽選受付開始、在庫復活)
 #                "disappear" = ページ内にキーワードが「消えた」ら通知(例: "売り切れ"表示が消えた = 買える)
 #
-# 種類2: type: "lottery_list" = 全国の抽選まとめサイト(ポケカ抽選図鑑形式)を監視
+# 種類2: type: "lottery_list" = 全国の抽選まとめサイトを監視
 #   受付中の抽選一覧を丸ごと取得し、新しく追加されたエントリーごとに個別通知する。
-#   area_filter: 指定すると、エリア表記にその文字列を含むものだけに絞り込む(例: "愛知")。
-#                省略すると全国すべてが対象になる。
+#   parser: "pokeca_navi"(ポケカ専用) または "cardchusen"(ポケカ/ワンピ/遊戯王/ドラゴンボール対応)。
+#   area_filter: 指定すると絞り込む。parser により表記が違うので注意。
+#                - pokeca_navi: 日本語表記の部分一致 (例: "愛知")
+#                - cardchusen : ローマ字の県スラッグ (例: "aichi")。ただし店頭のみの抽選は
+#                  エリア情報自体を持たないため、cardchusenのarea_filterは主に
+#                  「郵送で愛知にも届く抽選」を拾うためのものと理解しておくこと。
 #
 # 新しいショップを追加するときは、このリストに1エントリ追記するだけでOK。
 # 実際のページのHTML/キーワードを見て appear/disappear と keyword は調整してください。
@@ -18,8 +22,21 @@
 targets:
   - name: "ポケカ抽選図鑑 (愛知の抽選)"
     type: "lottery_list"
+    parser: "pokeca_navi"
     url: "https://pokeca-navi.jp/lotteries/"
     area_filter: "愛知"
+
+  - name: "カード抽選まとめ - ワンピース (愛知配送対応分)"
+    type: "lottery_list"
+    parser: "cardchusen"
+    url: "https://cardchusen.com/onepiece"
+    area_filter: "aichi"
+
+  - name: "カード抽選まとめ - ドラゴンボール (愛知配送対応分)"
+    type: "lottery_list"
+    parser: "cardchusen"
+    url: "https://cardchusen.com/dragonball"
+    area_filter: "aichi"
 
   - name: "ポケモンセンターオンライン 新商品"
     url: "https://www.pokemoncenter-online.com/search/?prefn1=releaseType&prefv1=1&srule=top-new-product"
