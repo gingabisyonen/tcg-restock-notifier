@@ -24,6 +24,15 @@ MASTER_GAME_COLUMNS = {
 
 ANNOUNCE_DATE_PATTERN = re.compile(r"(?:当選発表|抽選結果|結果発表)\D{0,10}?(\d{1,2})月(\d{1,2})日")
 
+# 商品名に含まれる型番(例: OP-17, ST01, FB01)を拾うためのパターン。
+# 表記ゆれ(語順・括弧の種類違いなど)があっても型番さえ一致すれば同一商品とみなす。
+PRODUCT_CODE_PATTERN = re.compile(r"[A-Z]{1,4}-?\d{2,3}[A-Z]?")
+
+
+def _extract_product_code(name: str) -> str | None:
+    match = PRODUCT_CODE_PATTERN.search(name.upper().replace(" ", ""))
+    return match.group(0) if match else None
+
 _client = None
 _spreadsheet = None
 _tried = False
@@ -47,8 +56,10 @@ def _get_spreadsheet():
 
 
 def _resolve_product_name(game: str, product: str) -> str:
-    """Masterシートの商品名リスト(C/D/E列)と突き合わせる。
-    一致(部分一致含む)する既存名があればそれを返し、無ければ最下行に追加してそのまま返す。"""
+    """Masterシートの商品名リスト(D/E/F列)と突き合わせる。
+    1. 型番(OP-17など)が一致すれば表記ゆれがあっても同一商品とみなし、既存名を返す
+    2. 型番がない/一致しない場合は部分一致で判定する
+    3. どちらでも判断できない場合は既存名を推測せず、新規行として最下行に追加する"""
     spreadsheet = _get_spreadsheet()
     col = MASTER_GAME_COLUMNS.get(game)
     if spreadsheet is None or col is None:
@@ -56,6 +67,12 @@ def _resolve_product_name(game: str, product: str) -> str:
 
     master = spreadsheet.worksheet(MASTER_SHEET_NAME)
     existing = master.col_values(col)[1:]  # 先頭行(見出し)を除く
+
+    product_code = _extract_product_code(product)
+    if product_code:
+        for name in existing:
+            if name and _extract_product_code(name) == product_code:
+                return name
 
     for name in existing:
         if name and (name == product or name in product or product in name):
