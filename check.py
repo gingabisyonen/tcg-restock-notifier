@@ -251,11 +251,8 @@ def check_lottery_list_target(target: dict, state: dict) -> bool:
                 f"{_suppress_embed(info['link'])}\n{SEPARATOR}",
                 username=bot_name,
             )
-            memo = info["link"]
-            if info["deadline"]:
-                memo = f"締切: {info['deadline']} / {memo}"
             try:
-                append_lottery_row(game_label, info["product"], info["shop"], memo, info["summary"])
+                append_lottery_row(game_label, info["product"], info["shop"], info["link"], info["summary"])
             except Exception as exc:
                 print(f"[WARN] failed to append to spreadsheet: {exc}", file=sys.stderr)
 

@@ -77,8 +77,9 @@ def _extract_announce_date(text: str) -> str:
     return f"{year}/{month:02d}/{day:02d}"
 
 
-def append_lottery_row(game: str, product: str, shop: str, memo: str, description: str = "") -> None:
+def append_lottery_row(game: str, product: str, shop: str, link: str, description: str = "") -> None:
     """新規抽選を検知した際にDateシートへ1行追記する。
+    K列(当選通知方法)には分かっている範囲の説明文、L列(URL)には応募先URLを入れる。
     GOOGLE_SERVICE_ACCOUNT_JSON が未設定の場合は何もしない(Discord通知のみで動作継続)。"""
     spreadsheet = _get_spreadsheet()
     if spreadsheet is None:
@@ -99,6 +100,7 @@ def append_lottery_row(game: str, product: str, shop: str, memo: str, descriptio
         shop,
         "-",
         announce_date,
-        memo,
+        description,
+        link,
     ]
     spreadsheet.worksheet(DATE_SHEET_NAME).append_row(row, value_input_option="USER_ENTERED")
