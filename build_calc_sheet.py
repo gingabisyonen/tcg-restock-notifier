@@ -29,9 +29,6 @@ def rate_formula(win_cell: str, lose_cell: str) -> str:
 def build_values():
     rows: list[list] = []
 
-    def next_row() -> int:
-        return len(rows) + 1
-
     rows.append(["【全体】"])
     rows.append(["総件数", "=COUNTA(Date!A2:A)"])
     rows.append(["当選", '=COUNTIF(Date!F2:F,"当選")'])
@@ -39,16 +36,16 @@ def build_values():
     rows.append(["保留(未定)", "=B2-B3-B4"])
     rows.append(["当選率(%)", rate_formula("B3", "B4")])
     overall_title_row = 1
-    overall_last_row = next_row() - 1
+    overall_last_row = len(rows)
     rows.append([])
     rows.append([])
 
+    person_title_row = len(rows) + 1
     rows.append(["【担当者別】"])
-    person_title_row = next_row()
+    person_header_row = len(rows) + 1
     rows.append(["担当者", "総件数", "当選", "落選", "保留", "当選率(%)"])
-    person_header_row = next_row()
     for person in RESPONSIBLE_PEOPLE:
-        r = next_row()
+        r = len(rows) + 1
         rows.append([
             person,
             f'=COUNTIF(Date!D:D,"{person}")',
@@ -57,16 +54,16 @@ def build_values():
             f"=B{r}-C{r}-D{r}",
             rate_formula(f"C{r}", f"D{r}"),
         ])
-    person_last_row = next_row() - 1
+    person_last_row = len(rows)
     rows.append([])
     rows.append([])
 
+    game_title_row = len(rows) + 1
     rows.append(["【ゲーム種別】"])
-    game_title_row = next_row()
+    game_header_row = len(rows) + 1
     rows.append(["種別", "総件数", "当選", "落選", "保留", "当選率(%)"])
-    game_header_row = next_row()
     for game in GAME_TYPES:
-        r = next_row()
+        r = len(rows) + 1
         rows.append([
             game,
             f'=COUNTIF(Date!E:E,"{game}")',
@@ -75,7 +72,7 @@ def build_values():
             f"=B{r}-C{r}-D{r}",
             rate_formula(f"C{r}", f"D{r}"),
         ])
-    game_last_row = next_row() - 1
+    game_last_row = len(rows)
 
     layout = {
         "overall_title_row": overall_title_row,
