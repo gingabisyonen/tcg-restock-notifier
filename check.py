@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 
 from notify import send_discord_message
+from sheets import append_lottery_row
 
 ROOT = Path(__file__).parent
 TARGETS_FILE = ROOT / "targets.yaml"
@@ -250,6 +251,13 @@ def check_lottery_list_target(target: dict, state: dict) -> bool:
                 f"{_suppress_embed(info['link'])}\n{SEPARATOR}",
                 username=bot_name,
             )
+            memo = info["link"]
+            if info["deadline"]:
+                memo = f"締切: {info['deadline']} / {memo}"
+            try:
+                append_lottery_row(game_label, info["product"], info["shop"], memo)
+            except Exception as exc:
+                print(f"[WARN] failed to append to spreadsheet: {exc}", file=sys.stderr)
 
     if previous_ids != current_ids:
         print(f"[OK] {name}: {len(current_ids)} open lotteries ({len(current_ids - previous_ids)} new, {len(previous_ids - current_ids)} closed/removed)")
