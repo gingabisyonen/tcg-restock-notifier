@@ -35,3 +35,23 @@ targets:
     url: "https://193tcg.com/"
     keyword: "抽選"
     alert_on: "appear"
+
+  - name: "三洋堂書店 抽選販売"
+    url: "https://www.sanyodo.co.jp/news/evt_lottery-sale"
+    keyword: "現在開催中の抽選販売はありません"
+    alert_on: "disappear"
+
+  - name: "イエローサブマリン ポケモンカード"
+    url: "https://shop.yellowsubmarine.co.jp/products/list?category_id=118"
+    keyword: "抽選"
+    alert_on: "appear"
+
+  - name: "トイザらス ポケモン"
+    url: "https://www.toysrus.co.jp/ja-jp/pokemon/"
+    keyword: "抽選"
+    alert_on: "appear"
+
+  - name: "ヨドバシ.com ポケモンカード"
+    url: "https://www.yodobashi.com/category/141001/141651/141662/141663/m0000005115/"
+    keyword: "抽選"
+    alert_on: "appear"
