@@ -244,6 +244,7 @@ def check_lottery_list_target(target: dict, state: dict) -> bool:
             )
 
     if previous_ids != current_ids:
+        print(f"[OK] {name}: {len(current_ids)} open lotteries ({len(current_ids - previous_ids)} new, {len(previous_ids - current_ids)} closed/removed)")
         state[state_key] = sorted(current_ids)
         return True
 
