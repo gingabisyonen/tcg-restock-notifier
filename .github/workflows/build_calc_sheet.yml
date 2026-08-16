@@ -1,4 +1,4 @@
-name: List sheets (one-off)
+name: Build calc sheet (one-off)
 
 on:
   workflow_dispatch: {}
@@ -17,4 +17,4 @@ jobs:
 
       - env:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
-        run: python list_sheets.py
+        run: python build_calc_sheet.py
