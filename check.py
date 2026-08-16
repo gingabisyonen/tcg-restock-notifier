@@ -68,7 +68,9 @@ def main() -> None:
         present = keyword in text
         previous = state.get(name)
 
-        if previous is not None:
+        if previous is None:
+            print(f"[INIT] {name}: baseline recorded (present={present})")
+        else:
             triggered = (alert_on == "appear" and not previous and present) or (
                 alert_on == "disappear" and previous and not present
             )
