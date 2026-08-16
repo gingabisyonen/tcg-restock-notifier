@@ -21,6 +21,13 @@ HEADERS = {
     "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
 }
 
+SEPARATOR = "ー" * 20
+
+
+def _suppress_embed(url: str) -> str:
+    """URLを <...> で囲み、Discord側のリンクプレビュー(埋め込みカード)を抑制する。"""
+    return f"<{url}>"
+
 
 def load_targets() -> list[dict]:
     data = yaml.safe_load(TARGETS_FILE.read_text(encoding="utf-8"))
@@ -120,7 +127,8 @@ def check_keyword_target(target: dict, state: dict) -> bool:
         if triggered:
             print(f"[ALERT] {name}: {alert_on} condition met")
             send_discord_message(
-                f"🔔 **{name}**\n条件(「{keyword}」が{alert_on}) が成立しました。\n{url}",
+                f"🔔 **{name}**\n条件(「{keyword}」が{alert_on}) が成立しました。\n"
+                f"{_suppress_embed(url)}\n{SEPARATOR}",
                 username=bot_name,
             )
 
@@ -239,7 +247,7 @@ def check_lottery_list_target(target: dict, state: dict) -> bool:
                 f"抽選期限: {info['deadline'] or '不明'}\n"
                 f"応募方法: {info['method'] or '不明'}\n"
                 f"詳細: {info['summary'] or 'なし'}\n"
-                f"{info['link']}",
+                f"{_suppress_embed(info['link'])}\n{SEPARATOR}",
                 username=bot_name,
             )
 
