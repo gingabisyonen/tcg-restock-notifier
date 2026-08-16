@@ -57,3 +57,5 @@ python check.py
 
 - ポケモンセンターオンラインは Bot 対策(WAF)がある可能性があり、`requests` での取得がブロックされる/正しいHTMLが返らない場合があります。その場合はヘッダー調整やヘッドレスブラウザ(Playwright等)への切り替えが必要です。
 - Amazon・楽天などの大手ECモールはスクレイピングが利用規約に抵触しやすいため、意図的に対象外にしています。
+
+<!-- trigger actions registration -->
