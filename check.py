@@ -21,7 +21,7 @@ HEADERS = {
     "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
 }
 
-SEPARATOR = "ー" * 20
+SEPARATOR = "ー" * 18
 
 
 def _suppress_embed(url: str) -> str:
