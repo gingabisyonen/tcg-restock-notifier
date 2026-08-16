@@ -215,6 +215,14 @@ def check_lottery_list_target(target: dict, state: dict) -> bool:
     soup = BeautifulSoup(html, "html.parser")
     entries = parser(soup, url, area_filter)
 
+    exclude_keywords = target.get("exclude_keywords") or []
+    if exclude_keywords:
+        entries = {
+            entry_id: info
+            for entry_id, info in entries.items()
+            if not any(kw in info["product"] or kw in info["shop"] for kw in exclude_keywords)
+        }
+
     state_key = f"__list__{name}"
     previous_ids = set(state.get(state_key) or [])
     current_ids = set(entries.keys())

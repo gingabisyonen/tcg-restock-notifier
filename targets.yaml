@@ -14,6 +14,8 @@
 #   受付中の抽選一覧を丸ごと取得し、新しく追加されたエントリーごとに個別通知する。
 #   parser:      "pokeca_navi"(ポケカ専用) または "cardchusen"(ポケカ/ワンピ/遊戯王/ドラゴンボール対応)。
 #   game_label:  通知本文に表示するゲーム名。
+#   exclude_keywords: 商品名 or 店舗名にこの文字列を含むエントリーは通知しない
+#                (例: 飲料メーカーのグッズ懸賞など、カード本体ではないもの)。
 #   area_filter: 指定すると絞り込む。parser により表記が違うので注意。
 #                - pokeca_navi: 日本語表記の部分一致 (例: "愛知")
 #                - cardchusen : ローマ字の県スラッグ (例: "aichi")。ただし店頭のみの抽選は
@@ -31,6 +33,7 @@ targets:
     area_filter: "愛知"
     game_label: "ポケモンカード"
     bot_name: "ポケカ抽選Bot"
+    exclude_keywords: ["Gジャン", "QUOカード", "コラボ", "Tシャツ", "ぬいぐるみ", "フィギュア"]
 
   - name: "カード抽選まとめ - ワンピース (愛知配送対応分)"
     type: "lottery_list"
