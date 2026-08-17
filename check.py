@@ -1,5 +1,6 @@
 import json
 import sys
+from datetime import date
 from pathlib import Path
 
 import requests
@@ -23,6 +24,11 @@ HEADERS = {
 }
 
 SEPARATOR = "ー" * 18
+
+# lottery_list対象で「新着0件」がこの日数以上続いたら、パーサー故障の疑いありとしてDiscordに1回だけ警告する。
+# サイトのHTML構造が変わってCSSセレクタが一致しなくなっても、取得自体は成功する(HTTP的にはエラーに
+# ならない)ため、この手のヘルスチェックが無いと壊れたまま誰も気づかない状態になりうる。
+STALE_ALERT_DAYS = 1
 
 # WAF/Bot対策の確認ページによく含まれる文言。HTTP 200で返ってくるため
 # requests.RequestException では検知できず、素通りすると誤検知の原因になる。
@@ -266,6 +272,32 @@ def check_lottery_list_target(target: dict, state: dict) -> bool:
     state_key = f"__list__{name}"
     previous_ids = set(state.get(state_key) or [])
     current_ids = set(entries.keys())
+    state_changed = False
+
+    empty_since_key = f"__empty_since__{name}"
+    empty_alerted_key = f"__empty_alerted__{name}"
+    if current_ids:
+        had_empty_since = state.pop(empty_since_key, None) is not None
+        had_empty_alerted = state.pop(empty_alerted_key, None) is not None
+        if had_empty_since or had_empty_alerted:
+            state_changed = True
+    else:
+        empty_since = state.get(empty_since_key)
+        if empty_since is None:
+            state[empty_since_key] = date.today().isoformat()
+            state_changed = True
+        else:
+            days_empty = (date.today() - date.fromisoformat(empty_since)).days
+            if days_empty >= STALE_ALERT_DAYS and not state.get(empty_alerted_key):
+                print(f"[ALERT] {name}: 0 open lotteries for {days_empty} day(s) - possible parser breakage")
+                send_discord_message(
+                    f"⚠️【{name}】新着抽選が{days_empty}日以上0件です。"
+                    f"サイトの構造が変わってパーサーが壊れていないか確認してください。\n"
+                    f"{_suppress_embed(url)}\n{SEPARATOR}",
+                    username=bot_name,
+                )
+                state[empty_alerted_key] = True
+                state_changed = True
 
     if state_key not in state:
         print(f"[INIT] {name}: baseline recorded ({len(current_ids)} open lotteries)")
@@ -290,6 +322,9 @@ def check_lottery_list_target(target: dict, state: dict) -> bool:
     if previous_ids != current_ids:
         print(f"[OK] {name}: {len(current_ids)} open lotteries ({len(current_ids - previous_ids)} new, {len(previous_ids - current_ids)} closed/removed)")
         state[state_key] = sorted(current_ids)
+        return True
+
+    if state_changed:
         return True
 
     print(f"[OK] {name}: no change ({len(current_ids)} open lotteries)")
