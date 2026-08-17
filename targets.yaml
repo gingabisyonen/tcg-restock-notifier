@@ -2,6 +2,9 @@
 #
 # 共通:
 #   bot_name: Discordの送信者名(Webhook表示名)。ゲームごとに変えると通知バナーで一目で分かる。
+#   render:   true にすると、プレーンな requests を試さず最初からヘッドレスブラウザ(Playwright)で
+#             取得する。WAF/Bot対策(Cloudflare等)があり、requestsだと確認ページやブロックページを
+#             拾ってしまうサイト向け。省略時はfalse(まずrequestsで試し、失敗時のみブラウザにフォールバック)。
 #
 # 種類1: type省略(デフォルト) = 単一ページのキーワード監視
 #   name:        通知メッセージに表示する名前
@@ -56,6 +59,7 @@ targets:
     keyword: "抽選"
     alert_on: "appear"
     bot_name: "ポケカ抽選Bot"
+    render: true
 
   - name: "カードラボ 名古屋駅前店"
     url: "https://www.c-labo.jp/shop/nagoyaekimae/"

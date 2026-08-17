@@ -1,0 +1,12 @@
+# Template for local dev secrets. Copy this file to dev-env.local.ps1 and fill in the two
+# placeholders below with your real values. dev-env.local.ps1 is gitignored, so real secrets
+# there never get committed. Do NOT put real values directly into this .example file -- it IS
+# tracked by git.
+#
+# Usage after copying and filling in:
+#   . .\dev-env.local.ps1
+
+$env:DISCORD_WEBHOOK_URL = "PASTE_YOUR_DISCORD_WEBHOOK_URL_HERE"
+$env:GOOGLE_SERVICE_ACCOUNT_JSON = Get-Content "PASTE_PATH_TO_YOUR_SERVICE_ACCOUNT_JSON_FILE_HERE" -Raw
+
+Write-Output "env vars set."

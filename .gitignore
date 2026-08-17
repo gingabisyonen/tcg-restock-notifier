@@ -1,3 +1,5 @@
 __pycache__/
 *.pyc
 .venv/
+dev-env.local.ps1
+applicant.local.json

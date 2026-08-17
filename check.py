@@ -24,6 +24,23 @@ HEADERS = {
 
 SEPARATOR = "ー" * 18
 
+# WAF/Bot対策の確認ページによく含まれる文言。HTTP 200で返ってくるため
+# requests.RequestException では検知できず、素通りすると誤検知の原因になる。
+_BLOCK_PAGE_MARKERS = (
+    "attention required",
+    "cf-browser-verification",
+    "just a moment",
+    "access denied",
+    "pardon our interruption",
+    "px-captcha",
+    "are you a human",
+)
+
+
+def _looks_like_block_page(html: str) -> bool:
+    lowered = html.lower()
+    return any(marker in lowered for marker in _BLOCK_PAGE_MARKERS)
+
 
 def _suppress_embed(url: str) -> str:
     """URLを <...> で囲み、Discord側のリンクプレビュー(埋め込みカード)を抑制する。"""
@@ -73,20 +90,32 @@ def close_browser() -> None:
 def fetch_html_playwright(url: str) -> str | None:
     try:
         browser = _get_browser()
-        page = browser.new_page(user_agent=HEADERS["User-Agent"], locale="ja-JP")
+        page = browser.new_page(
+            user_agent=HEADERS["User-Agent"],
+            locale="ja-JP",
+            extra_http_headers={"Accept-Language": HEADERS["Accept-Language"]},
+        )
         page.goto(url, timeout=30000, wait_until="domcontentloaded")
         html = page.content()
         page.close()
+        if _looks_like_block_page(html):
+            print(f"[WARN] headless browser also got a block/challenge page for {url}", file=sys.stderr)
+            return None
         return html
     except Exception as exc:
         print(f"[WARN] headless browser failed to fetch {url}: {exc}", file=sys.stderr)
         return None
 
 
-def fetch_html(url: str) -> str | None:
+def fetch_html(url: str, force_playwright: bool = False) -> str | None:
+    if force_playwright:
+        return fetch_html_playwright(url)
     try:
         resp = requests.get(url, headers=HEADERS, timeout=20)
         resp.raise_for_status()
+        if _looks_like_block_page(resp.text):
+            print(f"[WARN] plain request got a block/challenge page for {url}; retrying with headless browser", file=sys.stderr)
+            return fetch_html_playwright(url)
         return resp.text
     except requests.RequestException as exc:
         print(
@@ -96,8 +125,8 @@ def fetch_html(url: str) -> str | None:
         return fetch_html_playwright(url)
 
 
-def fetch_text(url: str) -> str | None:
-    html = fetch_html(url)
+def fetch_text(url: str, force_playwright: bool = False) -> str | None:
+    html = fetch_html(url, force_playwright=force_playwright)
     if html is None:
         return None
     soup = BeautifulSoup(html, "html.parser")
@@ -111,8 +140,9 @@ def check_keyword_target(target: dict, state: dict) -> bool:
     keyword = target["keyword"]
     alert_on = target["alert_on"]
     bot_name = target.get("bot_name")
+    force_playwright = bool(target.get("render"))
 
-    text = fetch_text(url)
+    text = fetch_text(url, force_playwright=force_playwright)
     if text is None:
         return False
 
@@ -216,8 +246,9 @@ def check_lottery_list_target(target: dict, state: dict) -> bool:
     game_label = target.get("game_label", "TCG")
     bot_name = target.get("bot_name")
     parser = PARSERS[target.get("parser", "pokeca_navi")]
+    force_playwright = bool(target.get("render"))
 
-    html = fetch_html(url)
+    html = fetch_html(url, force_playwright=force_playwright)
     if html is None:
         return False
 
@@ -252,7 +283,7 @@ def check_lottery_list_target(target: dict, state: dict) -> bool:
                 username=bot_name,
             )
             try:
-                append_lottery_row(game_label, info["product"], info["shop"], info["link"], info["summary"])
+                append_lottery_row(game_label, info["product"], info["shop"], info["link"], info["summary"], info["deadline"])
             except Exception as exc:
                 print(f"[WARN] failed to append to spreadsheet: {exc}", file=sys.stderr)
 
