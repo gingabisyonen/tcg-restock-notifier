@@ -139,6 +139,46 @@ def fetch_text(url: str, force_playwright: bool = False) -> str | None:
     return soup.get_text(separator=" ", strip=True)
 
 
+# 応募ページ本文にこの手の文言があれば、data-lottery-type="online"でも実質「当選後は店頭に
+# 来店しないとキャンセル」= 遠方からは使えない抽選とみなす。
+VISIT_REQUIRED_PATTERNS = (
+    "来店がない場合",
+    "ご来店がない場合",
+    "来店できない場合",
+    "来店いただけない場合",
+    "来店必須",
+    "店頭でのお引き渡し",
+    "店頭でのお渡し",
+    "店頭引き渡し",
+    "店頭受け取り必須",
+    "店頭にてお受け取り",
+    "店舗でお引き渡し",
+    "店舗にてお渡し",
+)
+
+
+def _requires_store_visit(url: str) -> bool:
+    """応募ページ本文を実際に開いて、来店必須の文言が無いか確認する。
+    多くの応募フォーム(customform.jp等)はJavaScriptで本文を描画するため、素のrequestsでは
+    文言を取得できない(空に近いHTMLしか返らない)。ヘッドレスブラウザで開いて判定する。
+    取得自体に失敗した場合は「分からない」ため誤って抽選を弾かないようFalse(来店必須ではない)
+    として扱う。"""
+    try:
+        browser = _get_browser()
+        page = browser.new_page(user_agent=HEADERS["User-Agent"])
+        page.goto(url, timeout=20000, wait_until="domcontentloaded")
+        try:
+            page.wait_for_load_state("networkidle", timeout=5000)
+        except Exception:
+            pass
+        text = page.inner_text("body")
+        page.close()
+    except Exception as exc:
+        print(f"[WARN] failed to check visit-required wording for {url}: {exc}", file=sys.stderr)
+        return False
+    return any(pattern in text for pattern in VISIT_REQUIRED_PATTERNS)
+
+
 def check_keyword_target(target: dict, state: dict) -> bool:
     """既存の「単一ページのキーワード出現/消失」監視。戻り値は state が変化したか。"""
     name = target["name"]
@@ -219,7 +259,8 @@ def _parse_cardchusen(soup: BeautifulSoup, url: str, area_filter: str | None) ->
     for card in soup.select("article.board-card"):
         area = card.get("data-area", "")
         is_online = card.get("data-lottery-type") == "online"
-        if area_filter and not is_online and area_filter not in area.split():
+        area_matches = not area_filter or area_filter in area.split()
+        if not area_matches and not is_online:
             continue
         store_el = card.select_one(".board-card__store")
         if not store_el:
@@ -238,6 +279,10 @@ def _parse_cardchusen(soup: BeautifulSoup, url: str, area_filter: str | None) ->
             "method": how_el.get("data-method-label", "") if how_el else "",
             "summary": how_el.get("data-method-note", "") if how_el else "",
             "link": cta_el["href"] if cta_el and cta_el.has_attr("href") else url,
+            # data-area空のためエリア一致ではなく「オンライン」区分だけで通した行かどうか。
+            # trueの場合、実際には店頭来店必須なだけで単に地域を書いていないケースがあるため、
+            # 応募ページ本文を開いて確認する対象になる(_requires_store_visit参照)。
+            "needs_visit_check": is_online and not area_matches,
         }
     return entries
 
@@ -309,6 +354,9 @@ def check_lottery_list_target(target: dict, state: dict) -> bool:
     else:
         for entry_id in sorted(current_ids - previous_ids):
             info = entries[entry_id]
+            if info.get("needs_visit_check") and _requires_store_visit(info["link"]):
+                print(f"[SKIP] {name}: {info['shop']} / {info['product']} requires an in-store visit, not a real remote entry")
+                continue
             print(f"[ALERT] {name}: new lottery - {info['shop']} / {info['product']}")
             send_discord_message(
                 f"🎴【{game_label}】{info['product']} の抽選\n"
