@@ -5,6 +5,7 @@ from datetime import date, timedelta
 
 import gspread
 from google.oauth2.service_account import Credentials
+from googleapiclient.discovery import build
 
 SPREADSHEET_ID = "1hG8mwRu4Df4gkZ-Th6F9MZBedCiRC-NR8V16wxOtOVs"
 DATE_SHEET_NAME = "Date"
@@ -12,9 +13,14 @@ MASTER_SHEET_NAME = "Master"
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
+# Dateシートの列位置(0始まり)。当落(F)・抽選結果発表日(J)は列を追加/移動しない前提でハードコードする。
+DATE_TOURAKU_COL_INDEX = 5
+DATE_ANNOUNCE_DATE_COL_INDEX = 9
+DATE_VIEW_LAST_COL_INDEX = 16  # A:P
+
 RESPONSIBLE_PERSON = "のり"
 
-# 「応募状況」列の値。DRAFTED(下書き済み)はapply.pyが下書きを用意した時点で自動で入るステータスで、
+# 当落(F列)の値。DRAFTED(下書き済み)はapply.pyが下書きを用意した時点で自動で入るステータスで、
 # まだ本人が送信していないため、締切リマインドの対象には含めつつ当選発表リマインドの対象には含めない。
 STATUS_NOT_APPLIED = "未応募"
 STATUS_DRAFTED = "下書き済み"
@@ -23,11 +29,11 @@ STATUS_LOST = "落選"
 STATUS_WON = "当選"
 
 # ゲームラベル(Masterシート「種類」列の表記と一致させる) -> Masterシートの商品名リストの列番号(A=1)
-# C列に「店舗」列を追加したため、ポケカ以降は1列ずつ右にずれている
+# B列にステータス列を追加したため、ポケカ以降は1列ずつ右にずれている
 MASTER_GAME_COLUMNS = {
-    "ポケカ": 4,        # D列
-    "ワンピース": 5,     # E列
-    "ドラゴンボール": 6,  # F列
+    "ポケカ": 5,        # E列
+    "ワンピース": 6,     # F列
+    "ドラゴンボール": 7,  # G列
 }
 
 ANNOUNCE_DATE_PATTERN = re.compile(r"(?:当選発表|抽選結果|結果発表)\D{0,10}?(\d{1,2})月(\d{1,2})日")
@@ -48,10 +54,12 @@ def _extract_product_code(name: str) -> str | None:
 _client = None
 _spreadsheet = None
 _tried = False
+_creds = None
+_sheets_service = None
 
 
 def _get_spreadsheet():
-    global _client, _spreadsheet, _tried
+    global _client, _spreadsheet, _tried, _creds
     if _tried:
         return _spreadsheet
     _tried = True
@@ -61,10 +69,21 @@ def _get_spreadsheet():
         return None
 
     info = json.loads(creds_json)
-    creds = Credentials.from_service_account_info(info, scopes=SCOPES)
-    _client = gspread.authorize(creds)
+    _creds = Credentials.from_service_account_info(info, scopes=SCOPES)
+    _client = gspread.authorize(_creds)
     _spreadsheet = _client.open_by_key(SPREADSHEET_ID)
     return _spreadsheet
+
+
+def _get_sheets_service():
+    """setBasicFilterなどgspreadに無いSheets API v4呼び出し用。_get_spreadsheet()と認証情報を共有する。"""
+    global _sheets_service
+    if _sheets_service is not None:
+        return _sheets_service
+    if _get_spreadsheet() is None or _creds is None:
+        return None
+    _sheets_service = build("sheets", "v4", credentials=_creds)
+    return _sheets_service
 
 
 def get_spreadsheet():
@@ -198,8 +217,8 @@ def _appended_row_number(append_result: dict) -> int | None:
 def append_lottery_row(game: str, product: str, shop: str, link: str, description: str = "", deadline: str = "") -> None:
     """新規抽選を検知した際にDateシートへ1行追記する。
     K列(当選通知方法)には分かっている範囲の説明文、L列(URL)には応募先URLを入れる。
-    応募状況・締切・リマインド済フラグはヘッダー名で列を探し(無ければ追加し)書き込む。
-    応募状況はここでは空欄のままにする(ユーザーが応募したいものだけ手動で「未応募」と入力する運用)。
+    F列(当落=ステータス)は新規追加時点では「未応募」で初期化する(未応募/下書き済み/応募済み/落選/当選の5値)。
+    締切・リマインド済フラグはヘッダー名で列を探し(無ければ追加し)書き込む。
     GOOGLE_SERVICE_ACCOUNT_JSON が未設定の場合は何もしない(Discord通知のみで動作継続)。"""
     spreadsheet = _get_spreadsheet()
     if spreadsheet is None:
@@ -216,7 +235,7 @@ def append_lottery_row(game: str, product: str, shop: str, link: str, descriptio
         today.day,
         RESPONSIBLE_PERSON,
         game,
-        "告知",
+        STATUS_NOT_APPLIED,
         resolved_product,
         shop,
         "-",
@@ -237,3 +256,60 @@ def append_lottery_row(game: str, product: str, shop: str, link: str, descriptio
     get_or_create_header_col(ws, idx, "応募状況")
     get_or_create_header_col(ws, idx, "締切リマインド済")
     get_or_create_header_col(ws, idx, "当選発表リマインド済")
+
+
+def sync_date_sheet_view() -> None:
+    """Dateシートの表示を最新状態に合わせる:
+    - 並び替え: 当落(F)が「未応募」(=ユーザー側でまだ対応していない案件)の行は最下部にまとめ、
+      それ以外は抽選結果発表日(J)の昇順。「未応募」を末尾固定する複合キーはSheets標準の単一列
+      ソート(setBasicFilterのsortSpecs)では表現できないため、Python側で計算して物理的に
+      並び替える。
+    - 非表示: 当落(F)が「落選」または「当選」(=結果が確定して対応不要になった案件)の行を
+      基本フィルタで非表示にする。こちらは条件付き書式と同様、セルの値が変わるたびにGoogle
+      Sheets側で自動的に再評価される(呼び直し不要)。
+    どちらもcheck.pyの実行(5分おき)のたびに呼び直すことで、手動でのステータス変更を追従させる。
+    GOOGLE_SERVICE_ACCOUNT_JSON が未設定の場合は何もしない。"""
+    spreadsheet = _get_spreadsheet()
+    service = _get_sheets_service()
+    if spreadsheet is None or service is None:
+        return
+
+    ws = spreadsheet.worksheet(DATE_SHEET_NAME)
+    values = ws.get_all_values()
+    if len(values) > 1:
+        data_rows = values[1:]
+
+        def sort_key(row: list[str]) -> tuple[bool, str]:
+            f_val = row[DATE_TOURAKU_COL_INDEX] if len(row) > DATE_TOURAKU_COL_INDEX else ""
+            j_val = row[DATE_ANNOUNCE_DATE_COL_INDEX] if len(row) > DATE_ANNOUNCE_DATE_COL_INDEX else ""
+            return (f_val == STATUS_NOT_APPLIED, j_val)
+
+        data_rows.sort(key=sort_key)
+        padded_rows = [
+            (row + [""] * DATE_VIEW_LAST_COL_INDEX)[:DATE_VIEW_LAST_COL_INDEX] for row in data_rows
+        ]
+        ws.update(
+            range_name=f"A2:{gspread.utils.rowcol_to_a1(1 + len(padded_rows), DATE_VIEW_LAST_COL_INDEX)}",
+            values=padded_rows,
+            value_input_option="USER_ENTERED",
+        )
+
+    request = {
+        "setBasicFilter": {
+            "filter": {
+                "range": {
+                    "sheetId": ws.id,
+                    "startRowIndex": 0,
+                    "endRowIndex": ws.row_count,
+                    "startColumnIndex": 0,
+                    "endColumnIndex": DATE_VIEW_LAST_COL_INDEX,
+                },
+                "criteria": {
+                    str(DATE_TOURAKU_COL_INDEX): {"hiddenValues": [STATUS_LOST, STATUS_WON]}
+                },
+            }
+        }
+    }
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=SPREADSHEET_ID, body={"requests": [request]}
+    ).execute()

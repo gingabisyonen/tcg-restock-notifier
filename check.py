@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 
 from notify import send_discord_message
-from sheets import append_lottery_row
+from sheets import append_lottery_row, sync_date_sheet_view
 
 ROOT = Path(__file__).parent
 TARGETS_FILE = ROOT / "targets.yaml"
@@ -347,6 +347,11 @@ def main() -> None:
                     changed = True
     finally:
         close_browser()
+
+    try:
+        sync_date_sheet_view()
+    except Exception as exc:
+        print(f"[WARN] failed to sync Date sheet filter/sort: {exc}", file=sys.stderr)
 
     if changed:
         save_state(state)

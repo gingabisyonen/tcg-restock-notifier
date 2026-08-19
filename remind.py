@@ -5,6 +5,7 @@ from calendar_sync import upsert_pending_count_event
 from notify import send_discord_message
 from sheets import (
     DATE_SHEET_NAME,
+    DATE_TOURAKU_COL_INDEX,
     SPREADSHEET_ID,
     STATUS_APPLIED,
     STATUS_DRAFTED,
@@ -15,8 +16,8 @@ from sheets import (
 )
 
 # append_lottery_row (sheets.py) が書き込む行構成に合わせた固定位置(0始まり)。
-# 応募状況・締切・リマインド済フラグは後から追加した列なのでヘッダー名で探すが、
-# 商品名/店舗/URL/当選発表日は元からある列でapp_lottery_row側も位置決め打ちのため、ここでも合わせる。
+# 締切・リマインド済フラグは後から追加した列なのでヘッダー名で探すが、
+# ステータス(当落, F列)/商品名/店舗/URL/当選発表日は元からある列で位置決め打ちのため、ここでも合わせる。
 PRODUCT_COL_INDEX = 6   # G列
 SHOP_COL_INDEX = 7      # H列
 ANNOUNCE_DATE_COL_INDEX = 9  # J列
@@ -50,7 +51,6 @@ def main() -> None:
 
     ws = spreadsheet.worksheet(DATE_SHEET_NAME)
     idx = header_index_map(ws)
-    status_col = get_or_create_header_col(ws, idx, "応募状況")
     deadline_col = get_or_create_header_col(ws, idx, "締切")
     announce_flag_col = get_or_create_header_col(ws, idx, "当選発表リマインド済")
 
@@ -61,7 +61,7 @@ def main() -> None:
     pending_count = 0
 
     for row_num, row in enumerate(rows[1:], start=2):
-        status = _cell(row, status_col - 1)
+        status = _cell(row, DATE_TOURAKU_COL_INDEX)
         if status not in PENDING_SUBMISSION_STATUSES and status != STATUS_APPLIED:
             continue
 

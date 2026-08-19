@@ -8,12 +8,11 @@ from playwright.sync_api import sync_playwright
 from notify import send_discord_message
 from sheets import (
     DATE_SHEET_NAME,
+    DATE_TOURAKU_COL_INDEX,
     STATUS_DRAFTED,
     STATUS_NOT_APPLIED,
     find_row_by_url,
-    get_or_create_header_col,
     get_spreadsheet,
-    header_index_map,
 )
 
 ROOT = Path(__file__).parent
@@ -85,7 +84,7 @@ def _is_google_form(url: str) -> bool:
 
 
 def _mark_drafted(url: str) -> None:
-    """スプレッドシートで元のURLと一致する行を探し、応募状況をSTATUS_DRAFTEDにする。
+    """スプレッドシートで元のURLと一致する行を探し、ステータス(当落, F列)をSTATUS_DRAFTEDにする。
     既に「未応募」以外(応募済み/落選/当選など、より進んだ状態)なら上書きしない。
     シートが未接続、または該当行が見つからない場合は何もしない(applyの本質的な動作には影響しない)。"""
     spreadsheet = get_spreadsheet()
@@ -95,18 +94,17 @@ def _mark_drafted(url: str) -> None:
     ws = spreadsheet.worksheet(DATE_SHEET_NAME)
     row_num = find_row_by_url(ws, url)
     if row_num is None:
-        print("[INFO] スプレッドシートに一致するURLの行が見つからなかったため、応募状況は更新していません。", file=sys.stderr)
+        print("[INFO] スプレッドシートに一致するURLの行が見つからなかったため、ステータスは更新していません。", file=sys.stderr)
         return
 
-    idx = header_index_map(ws)
-    status_col = get_or_create_header_col(ws, idx, "応募状況")
+    status_col = DATE_TOURAKU_COL_INDEX + 1
     current = ws.cell(row_num, status_col).value or ""
     if current not in ("", STATUS_NOT_APPLIED):
-        print(f"[INFO] 応募状況が既に「{current}」のため上書きしていません(row {row_num})。", file=sys.stderr)
+        print(f"[INFO] ステータスが既に「{current}」のため上書きしていません(row {row_num})。", file=sys.stderr)
         return
 
     ws.update_cell(row_num, status_col, STATUS_DRAFTED)
-    print(f"[OK] スプレッドシートの応募状況を「{STATUS_DRAFTED}」に更新しました(row {row_num})")
+    print(f"[OK] スプレッドシートのステータスを「{STATUS_DRAFTED}」に更新しました(row {row_num})")
 
 
 def _build_google_form_prefill_url(url: str, applicant: dict) -> tuple[str, list[str], list[str]] | None:
