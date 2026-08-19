@@ -186,8 +186,13 @@ def _extract_announce_date(text: str) -> str:
 def _extract_deadline_date(deadline_text: str) -> str:
     """抽選まとめサイトの deadline フィールド("8/16(日)まで" "本日 23:59" 等)を
     yyyy/mm/dd形式にして返す。"本日"/"明日"は日付が書かれていないため特別扱いする。
-    解釈できなければ空文字を返す(無理に埋めない)。"""
+    解釈できなければ空文字を返す(無理に埋めない)。
+    「8/19(火)から受付開始」のように、まだ始まっていない抽選の開始日を知らせているだけの
+    文言は「まで」(締切)を含まないため、日付があっても締切として扱わず空文字を返す
+    (受付開始日を締切と誤認識して記録してしまう不具合の対策)。"""
     if not deadline_text:
+        return ""
+    if "開始" in deadline_text and "まで" not in deadline_text:
         return ""
     if "本日" in deadline_text:
         return date.today().strftime("%Y/%m/%d")
