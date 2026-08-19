@@ -210,11 +210,16 @@ def _parse_pokeca_navi(soup: BeautifulSoup, url: str, area_filter: str | None) -
 
 def _parse_cardchusen(soup: BeautifulSoup, url: str, area_filter: str | None) -> dict[str, dict[str, str]]:
     """cardchusen.com形式: article.board-card 単位。エリアは data-area 属性にローマ字の県名が
-    スペース区切りで入る(店頭のみの抽選は空のことが多い)。area_filter はローマ字("aichi"等)で指定する。"""
+    スペース区切りで入る(店頭のみの抽選は空のことが多い)。area_filter はローマ字("aichi"等)で指定する。
+    data-lottery-type="online"(郵送・オンライン応募)のカードはそもそもdata-areaを持たないため、
+    area_filterの有無に関わらず常に含める(pokeca_naviパーサーの「全国」特別扱いと同じ考え方)。
+    実際に「ヤマシロヤ オンラインショップ」等、オンライン抽選がdata-area空のせいでほぼ全件
+    (110件中0件)area_filterに弾かれていたことが判明したための対応。"""
     entries: dict[str, dict[str, str]] = {}
     for card in soup.select("article.board-card"):
         area = card.get("data-area", "")
-        if area_filter and area_filter not in area.split():
+        is_online = card.get("data-lottery-type") == "online"
+        if area_filter and not is_online and area_filter not in area.split():
             continue
         store_el = card.select_one(".board-card__store")
         if not store_el:
