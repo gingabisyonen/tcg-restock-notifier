@@ -139,38 +139,88 @@ def fetch_text(url: str, force_playwright: bool = False) -> str | None:
     return soup.get_text(separator=" ", strip=True)
 
 
-# 応募ページ本文にこの手の文言があれば、data-lottery-type="online"でも実質「当選後は店頭に
-# 来店しないとキャンセル」= 遠方からは使えない抽選とみなす。
-VISIT_REQUIRED_PATTERNS = (
-    "来店がない場合",
-    "ご来店がない場合",
-    "来店できない場合",
-    "来店いただけない場合",
-    "来店必須",
-    "店頭でのお引き渡し",
-    "店頭でのお渡し",
-    "店頭引き渡し",
-    "店頭受け取り必須",
-    "店頭にてお受け取り",
-    "店舗でお引き渡し",
-    "店舗にてお渡し",
-    "店頭のみでの販売",
-    "店頭販売のみ",
-    "店頭でのみ販売",
+# 「来店しないとキャンセル」のような明示的な文言だけを探す方式は、実際に70件以上の応募ページを
+# 読んだところ穴だらけだった。日本のTCGショップの「抽選予約」は、応募自体はX/フォームで完結しても
+# 当選後の受け取りは店頭が前提という運用が大多数で、そのことを名指しで書かない募集文もいくらでも
+# ある。そのため「ダメな文言を探して弾く」のではなく逆に「郵送/発送に対応すると明記されている
+# 場合だけ通す」方式にする(未確認・記載なしはすべて店頭必須とみなす)。
+SHIPPING_OFFERED_PATTERNS = (
+    "発送いたします",
+    "発送します",
+    "発送も可能",
+    "発送に対応",
+    "発送対応",
+    "発送手続き",
+    "順次発送",
+    "全国発送",
+    "郵送いたします",
+    "郵送します",
+    "郵送も可能",
+    "郵送に対応",
+    "郵送対応",
+    "配送いたします",
+    "配送します",
+    "配送も可能",
+    "送料を頂戴",
+    "送料がかかります",
+    "送料は着払い",
+    "着払いで発送",
+    # 「発送します」等の言い切り以外にも、送料や配送業者名への具体的な言及があれば実際に
+    # 発送している強いシグナルとして扱う(送っていないものにわざわざ送料・配送業者を書かない)。
+    "送料",
+    "宅急便",
+    "宅配便",
+    "ヤマト運輸",
+    "佐川急便",
+    "ゆうパック",
+    "レターパック",
+)
+
+# Amazon/プレミアムバンダイ/駿河屋等の大手通販サイトは全国発送前提なので、応募ページの文言
+# チェックに関わらず常に「郵送対応」とみなす。理由: これらはWAF/JS描画のせいで本文がうまく
+# 取得できないことが多く(Amazon商品ページはナビゲーションで大半が埋まる、p-bandai.jpはJS描画で
+# 本文が空、joshinweb.jpはWAFでAccess Denied)、SHIPPING_OFFERED_PATTERNSのテキスト検索に頼ると
+# 誤って除外してしまう。
+NATIONWIDE_RETAILER_KEYWORDS = (
+    "Amazon",
+    "プレミアムバンダイ",
+    "p-bandai",
+    "DMM",
+    "Joshin",
+    "ジョーシン",
+    "駿河屋",
+    "Yahoo",
+    "楽天",
+)
+
+# 上のSHIPPING_OFFERED_PATTERNSが誤検知した場合の打ち消し用(「発送は承っておりません」等、
+# 「発送」という単語自体は含むが実際は非対応、という言い回しを弾く)。
+SHIPPING_NOT_OFFERED_PATTERNS = (
     "発送は承っておりません",
-    "発送不可",
     "発送は行っておりません",
+    "発送不可",
     "郵送不可",
     "郵送は承っておりません",
+    "店頭のみでの販売",
+    "店頭でのみ販売",
+    "店頭にて購入できる方",
+    "店頭でのご購入が可能な方",
+    "店頭でご購入いただける方",
+    "ご来店・ご購入いただける方",
+    "ご来店いただく",
+    "来店可能な方",
+    "来店必須",
 )
 
 
-def _requires_store_visit(url: str) -> bool:
-    """応募ページ本文を実際に開いて、来店必須の文言が無いか確認する。
+def _confirms_remote_purchase(url: str) -> bool:
+    """応募ページ本文を実際に開いて、郵送/発送に対応すると明記されているかどうかを確認する。
     多くの応募フォーム(customform.jp等)はJavaScriptで本文を描画するため、素のrequestsでは
     文言を取得できない(空に近いHTMLしか返らない)。ヘッドレスブラウザで開いて判定する。
-    取得自体に失敗した場合は「分からない」ため誤って抽選を弾かないようFalse(来店必須ではない)
-    として扱う。"""
+    郵送対応が明記されておらず、かつ非対応の言い回しが見つかった場合はFalse。どちらの言い回しも
+    見つからない(=何も書かれていない)場合も、日本のTCGショップの抽選は店頭受け取りが前提の
+    ことが大半なためFalseとして扱う(愛知県内の店舗はそもそもこの判定を通らない=area_matches
+    で別途拾われる)。ページ取得自体に失敗した場合のみ、判定不能としてTrue(弾かない)を返す。"""
     try:
         browser = _get_browser()
         page = browser.new_page(user_agent=HEADERS["User-Agent"])
@@ -182,9 +232,11 @@ def _requires_store_visit(url: str) -> bool:
         text = page.inner_text("body")
         page.close()
     except Exception as exc:
-        print(f"[WARN] failed to check visit-required wording for {url}: {exc}", file=sys.stderr)
+        print(f"[WARN] failed to check shipping wording for {url}: {exc}", file=sys.stderr)
+        return True
+    if any(pattern in text for pattern in SHIPPING_NOT_OFFERED_PATTERNS):
         return False
-    return any(pattern in text for pattern in VISIT_REQUIRED_PATTERNS)
+    return any(pattern in text for pattern in SHIPPING_OFFERED_PATTERNS)
 
 
 def check_keyword_target(target: dict, state: dict) -> bool:
@@ -362,8 +414,13 @@ def check_lottery_list_target(target: dict, state: dict) -> bool:
     else:
         for entry_id in sorted(current_ids - previous_ids):
             info = entries[entry_id]
-            if info.get("needs_visit_check") and _requires_store_visit(info["link"]):
-                print(f"[SKIP] {name}: {info['shop']} / {info['product']} requires an in-store visit, not a real remote entry")
+            is_nationwide_retailer = any(k in info["shop"] for k in NATIONWIDE_RETAILER_KEYWORDS)
+            if (
+                info.get("needs_visit_check")
+                and not is_nationwide_retailer
+                and not _confirms_remote_purchase(info["link"])
+            ):
+                print(f"[SKIP] {name}: {info['shop']} / {info['product']} has no confirmed shipping/mail option, not a real remote entry")
                 continue
             print(f"[ALERT] {name}: new lottery - {info['shop']} / {info['product']}")
             send_discord_message(
