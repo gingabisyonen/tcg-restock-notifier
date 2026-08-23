@@ -10,6 +10,13 @@ from googleapiclient.discovery import build
 SPREADSHEET_ID = "1hG8mwRu4Df4gkZ-Th6F9MZBedCiRC-NR8V16wxOtOVs"
 DATE_SHEET_NAME = "抽選"  # 旧シート名は "Date"(2026-08-23にユーザーがリネーム)
 MASTER_SHEET_NAME = "Master"
+CALC_SHEET_NAME = "計算"
+
+# 「計算」シートの【商品別】表の位置(2026-08-23作成時点でハードコード)。
+# A=種別 B=商品名 C=定価額 D=相場額 E=総件数 F=当選 G=落選 H=保留 I=当選率(%)
+# 定価額・相場額はtcg-collection-tracker側のupdate_lottery_prices.pyが日次で埋める(手入力の値は上書きしない)。
+CALC_PRODUCT_HEADER_ROW = 24
+CALC_PRODUCT_DATA_START_ROW = 25
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
@@ -127,6 +134,53 @@ def find_row_by_url(ws, url: str) -> int | None:
     return None
 
 
+def _append_product_to_calc_table(game: str, product: str) -> None:
+    """Masterシートに新商品が追加された時、「計算」シートの【商品別】表の最下行にも
+    集計行を1行追加する(種別ごとのグループ分けはせず、単純に表全体の最後に追記する)。
+    定価額・相場額は空欄で追加し、tcg-collection-tracker側の日次更新スクリプトが後から埋める。"""
+    spreadsheet = _get_spreadsheet()
+    service = _get_sheets_service()
+    if spreadsheet is None or service is None:
+        return
+
+    calc = spreadsheet.worksheet(CALC_SHEET_NAME)
+    existing_names = calc.get(f"A{CALC_PRODUCT_DATA_START_ROW}:A1000")
+    new_row = CALC_PRODUCT_DATA_START_ROW + len(existing_names)
+
+    total = f"=COUNTIF('{DATE_SHEET_NAME}'!$G:$G,B{new_row})"
+    won = f"=COUNTIFS('{DATE_SHEET_NAME}'!$G:$G,B{new_row},'{DATE_SHEET_NAME}'!$F:$F,\"{STATUS_WON}\")"
+    lost = f"=COUNTIFS('{DATE_SHEET_NAME}'!$G:$G,B{new_row},'{DATE_SHEET_NAME}'!$F:$F,\"{STATUS_LOST}\")"
+    pending = f"=E{new_row}-F{new_row}-G{new_row}"
+    rate = f"=IF(F{new_row}+G{new_row}=0,0,ROUND(F{new_row}/(F{new_row}+G{new_row})*100,1))"
+    calc.update(
+        range_name=f"A{new_row}:I{new_row}",
+        values=[[game, product, "", "", total, won, lost, pending, rate]],
+        value_input_option="USER_ENTERED",
+    )
+
+    border_style = {"style": "SOLID", "width": 1}
+    request = {
+        "updateBorders": {
+            "range": {
+                "sheetId": calc.id,
+                "startRowIndex": CALC_PRODUCT_HEADER_ROW - 1,
+                "endRowIndex": new_row,
+                "startColumnIndex": 0,
+                "endColumnIndex": 9,
+            },
+            "top": border_style,
+            "bottom": border_style,
+            "left": border_style,
+            "right": border_style,
+            "innerHorizontal": border_style,
+            "innerVertical": border_style,
+        }
+    }
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=SPREADSHEET_ID, body={"requests": [request]}
+    ).execute()
+
+
 def _resolve_product_name(game: str, product: str) -> str:
     """Masterシートの商品名リスト(D/E/F列)と突き合わせる。
     1. 型番(OP-17など)が一致すれば表記ゆれがあっても同一商品とみなし、既存名を返す
@@ -151,6 +205,7 @@ def _resolve_product_name(game: str, product: str) -> str:
             return name
 
     master.update_cell(len(existing) + 2, col, product)
+    _append_product_to_calc_table(game, product)
     return product
 
 
