@@ -18,6 +18,11 @@ from sheets import (
 ROOT = Path(__file__).parent
 APPLICANT_FILE = ROOT / "applicant.local.json"
 
+# 半自動応募機能を一時停止中(2026-08-23、ユーザー指示)。GitHub Actionsには元々組み込まれておらず
+# ローカル手動実行専用の機能だが、誤って実行してしまわないようここでガードする。
+# 再開する場合はこれをFalseに戻すだけでよい。
+ENABLED = False
+
 SEPARATOR = "ー" * 18
 
 # textとして扱ってよい<input>のtype。checkbox/radio/select/file/password/hiddenなどは対象外。
@@ -153,6 +158,14 @@ def _build_google_form_prefill_url(url: str, applicant: dict) -> tuple[str, list
 
 
 def main(url: str) -> None:
+    if not ENABLED:
+        print(
+            "[STOPPED] 半自動応募機能は現在停止中です。再開するには apply.py の ENABLED を "
+            "True に戻してください。",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     applicant = _load_applicant()
 
     if _is_google_form(url):
