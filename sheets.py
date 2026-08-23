@@ -8,12 +8,12 @@ from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 
 SPREADSHEET_ID = "1hG8mwRu4Df4gkZ-Th6F9MZBedCiRC-NR8V16wxOtOVs"
-DATE_SHEET_NAME = "Date"
+DATE_SHEET_NAME = "抽選"  # 旧シート名は "Date"(2026-08-23にユーザーがリネーム)
 MASTER_SHEET_NAME = "Master"
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
-# Dateシートの列位置(0始まり)。当落(F)・抽選結果発表日(J)は列を追加/移動しない前提でハードコードする。
+# 抽選シートの列位置(0始まり)。当落(F)・抽選結果発表日(J)は列を追加/移動しない前提でハードコードする。
 DATE_TOURAKU_COL_INDEX = 5
 DATE_ANNOUNCE_DATE_COL_INDEX = 9
 DATE_VIEW_LAST_COL_INDEX = 16  # A:P
@@ -220,7 +220,7 @@ def _appended_row_number(append_result: dict) -> int | None:
 
 
 def append_lottery_row(game: str, product: str, shop: str, link: str, description: str = "", deadline: str = "") -> None:
-    """新規抽選を検知した際にDateシートへ1行追記する。
+    """新規抽選を検知した際に抽選シートへ1行追記する。
     K列(当選通知方法)には分かっている範囲の説明文、L列(URL)には応募先URLを入れる。
     F列(当落=ステータス)は新規追加時点では「未応募」で初期化する(未応募/下書き済み/応募済み/落選/当選の5値)。
     締切・リマインド済フラグはヘッダー名で列を探し(無ければ追加し)書き込む。
@@ -264,7 +264,7 @@ def append_lottery_row(game: str, product: str, shop: str, link: str, descriptio
 
 
 def sync_date_sheet_view() -> None:
-    """Dateシートの表示を最新状態に合わせる:
+    """抽選シートの表示を最新状態に合わせる:
     - 並び替え: 当落(F)が「未応募」(=ユーザー側でまだ対応していない案件)の行は最下部にまとめ、
       それ以外は抽選結果発表日(J)の昇順。「未応募」を末尾固定する複合キーはSheets標準の単一列
       ソート(setBasicFilterのsortSpecs)では表現できないため、Python側で計算して物理的に
