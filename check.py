@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 from datetime import date
 from pathlib import Path
@@ -9,7 +10,7 @@ from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 
 from notify import send_discord_message
-from sheets import append_lottery_row, sync_date_sheet_view
+from sheets import append_lottery_row, pop_new_calc_rows, sync_date_sheet_view
 
 ROOT = Path(__file__).parent
 TARGETS_FILE = ROOT / "targets.yaml"
@@ -470,6 +471,17 @@ def main() -> None:
         sync_date_sheet_view()
     except Exception as exc:
         print(f"[WARN] failed to sync Date sheet filter/sort: {exc}", file=sys.stderr)
+
+    # 新商品が「計算」シートに追加された場合、その行番号をGitHub Actionsのoutputに渡す。
+    # ワークフロー側がこれを見て、その商品だけtcg-collection-trackerの価格取得を即時実行する
+    # (23商品全件の再取得は5分おきの実行には重すぎるため、新商品分のみに限定)。
+    new_calc_rows = pop_new_calc_rows()
+    if new_calc_rows:
+        print(f"[INFO] new 商品別 rows this run: {new_calc_rows}")
+        github_output = os.environ.get("GITHUB_OUTPUT")
+        if github_output:
+            with open(github_output, "a", encoding="utf-8") as f:
+                f.write(f"new_calc_rows={','.join(str(r) for r in new_calc_rows)}\n")
 
     if changed:
         save_state(state)

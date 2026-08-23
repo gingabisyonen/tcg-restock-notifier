@@ -25,10 +25,35 @@ jobs:
         run: playwright install --with-deps chromium
 
       - name: Run check
+        id: check
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
         run: python check.py
+
+      # 新商品が「計算」シートに追加された時だけ、tcg-collection-trackerの定価額/相場額取得を
+      # その商品分だけ即時実行する(23商品全件の再取得は5分おきの本体監視には重すぎるため)。
+      - name: Checkout tcg-collection-tracker
+        if: steps.check.outputs.new_calc_rows != ''
+        uses: actions/checkout@v4
+        with:
+          repository: gingabisyonen/tcg-collection-tracker
+          path: tcg-collection-tracker
+          token: ${{ secrets.COLLECTION_TRACKER_PAT }}
+
+      - name: Install tcg-collection-tracker dependencies
+        if: steps.check.outputs.new_calc_rows != ''
+        working-directory: tcg-collection-tracker
+        run: |
+          pip install -r requirements.txt
+          playwright install --with-deps chromium
+
+      - name: Fetch price for newly added product(s)
+        if: steps.check.outputs.new_calc_rows != ''
+        working-directory: tcg-collection-tracker
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+        run: python update_lottery_prices.py --only-rows "${{ steps.check.outputs.new_calc_rows }}"
 
       - name: Commit state if changed
         run: |

@@ -134,6 +134,20 @@ def find_row_by_url(ws, url: str) -> int | None:
     return None
 
 
+# check.pyの1回の実行中に「計算」シートへ新規追加した行番号を記録する。
+# 実行終了後にpop_new_calc_rows()で取り出し、GitHub Actions側でtcg-collection-trackerの
+# 価格取得を新商品分だけ即時実行するトリガーに使う(全件再取得は5分おきには重すぎるため)。
+_new_calc_rows: list[int] = []
+
+
+def pop_new_calc_rows() -> list[int]:
+    """今回の実行で「計算」シートに新規追加された行番号のリストを返し、内部の記録をクリアする。"""
+    global _new_calc_rows
+    rows = _new_calc_rows
+    _new_calc_rows = []
+    return rows
+
+
 def _append_product_to_calc_table(game: str, product: str) -> None:
     """Masterシートに新商品が追加された時、「計算」シートの【商品別】表の最下行にも
     集計行を1行追加する(種別ごとのグループ分けはせず、単純に表全体の最後に追記する)。
@@ -179,6 +193,8 @@ def _append_product_to_calc_table(game: str, product: str) -> None:
     service.spreadsheets().batchUpdate(
         spreadsheetId=SPREADSHEET_ID, body={"requests": [request]}
     ).execute()
+
+    _new_calc_rows.append(new_row)
 
 
 def _resolve_product_name(game: str, product: str) -> str:
