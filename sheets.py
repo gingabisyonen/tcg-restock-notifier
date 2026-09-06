@@ -290,17 +290,47 @@ def _appended_row_number(append_result: dict) -> int | None:
     return int(match.group(1)) if match else None
 
 
+_EXISTING_PRODUCT_SHOP_CACHE: set[tuple[str, str]] | None = None
+
+
+def _existing_product_shop_pairs(ws) -> set[tuple[str, str]]:
+    """抽選シートに既にある(商品名, 店舗名)の組み合わせを返す。プロセス内キャッシュ:
+    1回のcheck.py実行で何件appendしても、シート全体の読み込みは初回の1回だけで済む
+    (Sheets APIの読み取りクォータを圧迫しないため)。cardchusenとtoreka_chusenのように
+    同じ実世界の抽選を別々のサイトから重複検知した場合の二重追記を防ぐのが目的。"""
+    global _EXISTING_PRODUCT_SHOP_CACHE
+    if _EXISTING_PRODUCT_SHOP_CACHE is not None:
+        return _EXISTING_PRODUCT_SHOP_CACHE
+    rows = ws.get("G2:H")
+    _EXISTING_PRODUCT_SHOP_CACHE = {
+        (row[0].strip(), row[1].strip()) for row in rows if len(row) >= 2 and row[0].strip() and row[1].strip()
+    }
+    return _EXISTING_PRODUCT_SHOP_CACHE
+
+
 def append_lottery_row(game: str, product: str, shop: str, link: str, description: str = "", deadline: str = "") -> None:
     """新規抽選を検知した際に抽選シートへ1行追記する。
     K列(当選通知方法)には分かっている範囲の説明文、L列(URL)には応募先URLを入れる。
     F列(当落=ステータス)は新規追加時点では「未応募」で初期化する(未応募/下書き済み/応募済み/落選/当選の5値)。
     締切・リマインド済フラグはヘッダー名で列を探し(無ければ追加し)書き込む。
+    (商品名, 店舗名)が既にシートにある場合は、複数の抽選まとめサイトが同じ抽選を別々に検知した
+    ケースとみなして追記をスキップする(state.jsonはサイトごとに別管理のため、ここがサイト横断の
+    重複チェックの唯一の場所になる)。
     GOOGLE_SERVICE_ACCOUNT_JSON が未設定の場合は何もしない(Discord通知のみで動作継続)。"""
     spreadsheet = _get_spreadsheet()
     if spreadsheet is None:
         return
 
     resolved_product = _resolve_product_name(game, product)
+
+    ws = spreadsheet.worksheet(DATE_SHEET_NAME)
+    existing_pairs = _existing_product_shop_pairs(ws)
+    pair = (resolved_product.strip(), shop.strip())
+    if pair in existing_pairs:
+        print(f"[SKIP] already in spreadsheet, not appending again: {shop} / {resolved_product}")
+        return
+    existing_pairs.add(pair)
+
     announce_date = _extract_announce_date(description)
     deadline_date = _extract_deadline_date(deadline)
 
@@ -319,7 +349,6 @@ def append_lottery_row(game: str, product: str, shop: str, link: str, descriptio
         description,
         link,
     ]
-    ws = spreadsheet.worksheet(DATE_SHEET_NAME)
     result = ws.append_row(row, value_input_option="USER_ENTERED")
     row_num = _appended_row_number(result)
     if row_num is None:
