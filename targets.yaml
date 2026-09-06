@@ -15,15 +15,23 @@
 #
 # 種類2: type: "lottery_list" = 全国の抽選まとめサイトを監視
 #   受付中の抽選一覧を丸ごと取得し、新しく追加されたエントリーごとに個別通知する。
-#   parser:      "pokeca_navi"(ポケカ専用) または "cardchusen"(ポケカ/ワンピ/遊戯王/ドラゴンボール対応)。
+#   parser:      "pokeca_navi"(ポケカ専用) / "cardchusen"(ポケカ/ワンピ/遊戯王/ドラゴンボール対応) /
+#                "toreka_chusen"(通称トレチュー。ポケカ/ワンピ/遊戯王/ドラゴンボール対応)。
 #   game_label:  通知本文に表示するゲーム名。
 #   exclude_keywords: 商品名 or 店舗名にこの文字列を含むエントリーは通知しない
 #                (例: 飲料メーカーのグッズ懸賞など、カード本体ではないもの)。
-#   area_filter: 指定すると絞り込む。parser により表記が違うので注意。
-#                - pokeca_navi: 日本語表記の部分一致 (例: "愛知")
-#                - cardchusen : ローマ字の県スラッグ (例: "aichi")。ただし店頭のみの抽選は
+#   area_filter: 指定すると絞り込む。parser により表記・意味が違うので注意。
+#                - pokeca_navi  : 日本語表記の部分一致 (例: "愛知")
+#                - cardchusen   : ローマ字の県スラッグ (例: "aichi")。ただし店頭のみの抽選は
 #                  エリア情報自体を持たないため、cardchusenのarea_filterは主に
 #                  「郵送で愛知にも届く抽選」を拾うためのものと理解しておくこと。
+#                - toreka_chusen: このパーサーでは未使用(指定しても無視される)。urlに
+#                  ゲーム別ページ(/category/<game>/、例: /category/pokeka/)を指定すればよい。
+#                  ゲーム別ページ自体にはエリア情報が無い(かつ商品名にもゲーム名が
+#                  入るとは限らない)ため、代わりに /prefecture/aichi/(愛知の店頭抽選)と
+#                  /pickup/shipping/(郵送で受け取れる抽選、全国)という複数ゲーム混在の
+#                  ページを裏で取得し、そこに載っているIDとの積集合でエリアを絞り込む
+#                  (check.pyの_toreka_chusen_allowed_ids参照)。
 #
 # 新しいショップを追加するときは、このリストに1エントリ追記するだけでOK。
 # 実際のページのHTML/キーワードを見て appear/disappear と keyword は調整してください。
@@ -38,11 +46,25 @@ targets:
     bot_name: "ポケカ抽選Bot"
     exclude_keywords: ["Gジャン", "QUOカード", "コラボ", "Tシャツ", "ぬいぐるみ", "フィギュア", "九州"]
 
+  - name: "トレチュー - ポケカ (愛知+郵送)"
+    type: "lottery_list"
+    parser: "toreka_chusen"
+    url: "https://toreka-chusen.com/category/pokeka/"
+    game_label: "ポケカ"
+    bot_name: "ポケカ抽選Bot"
+
   - name: "カード抽選まとめ - ワンピース (愛知配送対応分)"
     type: "lottery_list"
     parser: "cardchusen"
     url: "https://cardchusen.com/onepiece"
     area_filter: "aichi"
+    game_label: "ワンピース"
+    bot_name: "ワンピース抽選Bot"
+
+  - name: "トレチュー - ワンピース (愛知+郵送)"
+    type: "lottery_list"
+    parser: "toreka_chusen"
+    url: "https://toreka-chusen.com/category/onepiece/"
     game_label: "ワンピース"
     bot_name: "ワンピース抽選Bot"
 
@@ -52,6 +74,25 @@ targets:
     url: "https://cardchusen.com/dragonball"
     area_filter: "aichi"
     game_label: "ドラゴンボール"
+    bot_name: "ドラゴンボール抽選Bot"
+
+  - name: "トレチュー - ドラゴンボール (愛知+郵送)"
+    type: "lottery_list"
+    parser: "toreka_chusen"
+    url: "https://toreka-chusen.com/category/dragonball/"
+    game_label: "ドラゴンボール"
+    bot_name: "ドラゴンボール抽選Bot"
+
+  - name: "イエローサブマリン ONE PIECEカードゲーム"
+    url: "https://shop.yellowsubmarine.co.jp/products/list?category_id=702040751"
+    keyword: "抽選"
+    alert_on: "appear"
+    bot_name: "ワンピース抽選Bot"
+
+  - name: "イエローサブマリン ドラゴンボールカード"
+    url: "https://shop.yellowsubmarine.co.jp/products/list?category_id=702040628"
+    keyword: "抽選"
+    alert_on: "appear"
     bot_name: "ドラゴンボール抽選Bot"
 
   - name: "ポケモンセンターオンライン 新商品"
@@ -89,7 +130,7 @@ targets:
     url: "https://www.sanyodo.co.jp/news/evt_lottery-sale"
     keyword: "現在開催中の抽選販売はありません"
     alert_on: "disappear"
-    bot_name: "ポケカ抽選Bot"
+    bot_name: "TCG抽選Bot"
 
   - name: "イエローサブマリン ポケモンカード"
     url: "https://shop.yellowsubmarine.co.jp/products/list?category_id=118"

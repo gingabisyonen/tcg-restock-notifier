@@ -348,9 +348,77 @@ def _parse_cardchusen(soup: BeautifulSoup, url: str, area_filter: str | None) ->
     return entries
 
 
+_TOREKA_CHUSEN_ALLOWED_IDS_CACHE: set[str] | None = None
+
+
+def _toreka_chusen_allowed_ids() -> set[str]:
+    """toreka-chusen.comの /prefecture/aichi/(愛知の店頭抽選)と /pickup/shipping/(郵送で受け取れる
+    抽選、全国)は複数ゲーム混在だが「ユーザーが実際に参加できる抽選」だけを集めたページなので、
+    この2ページに載っているエントリーのID(/lottery/.../へのリンク)を合算して返す。
+    プロセス内キャッシュ: 1回の実行で複数ゲームのtoreka_chusenターゲットを処理しても2ページの
+    再取得は1回で済む。"""
+    global _TOREKA_CHUSEN_ALLOWED_IDS_CACHE
+    if _TOREKA_CHUSEN_ALLOWED_IDS_CACHE is not None:
+        return _TOREKA_CHUSEN_ALLOWED_IDS_CACHE
+    ids: set[str] = set()
+    for path in ("/prefecture/aichi/", "/pickup/shipping/"):
+        html = fetch_html(f"https://toreka-chusen.com{path}")
+        if not html:
+            continue
+        allow_soup = BeautifulSoup(html, "html.parser")
+        for card in allow_soup.select("article.board-row"):
+            detail_el = card.select_one(".pcard__sub")
+            if detail_el and detail_el.has_attr("href"):
+                ids.add(detail_el["href"])
+    _TOREKA_CHUSEN_ALLOWED_IDS_CACHE = ids
+    return ids
+
+
+def _parse_toreka_chusen(soup: BeautifulSoup, url: str, area_filter: str | None) -> dict[str, dict[str, str]]:
+    """toreka-chusen.com形式: article.board-row 単位。urlはゲーム別ページ(/category/<game>/、
+    例: /category/pokeka/)を指定する。このサイトはゲーム別ページにエリア情報を出さない上、
+    商品名にもゲーム名が入るとは限らない(「世界最強の戦士」のようにゲーム名なしの通称だけの
+    ことがある)ため、商品名でのゲーム判定はしていない。代わりに _toreka_chusen_allowed_ids() で
+    取得した「実際に参加できる抽選」のIDとの積集合を取ることでエリアを絞り込む。
+    area_filter はこのパーサーでは使わない(他parserとシグネチャを揃えるためだけに残す)。"""
+    allowed_ids = _toreka_chusen_allowed_ids()
+    entries: dict[str, dict[str, str]] = {}
+    for card in soup.select("article.board-row"):
+        detail_el = card.select_one(".pcard__sub")
+        entry_id = detail_el["href"] if detail_el and detail_el.has_attr("href") else None
+        if not entry_id or entry_id not in allowed_ids:
+            continue
+        title_el = card.select_one(".pcard__title-link")
+        shop_el = card.select_one(".pcard__shop-link")
+        if not title_el or not shop_el:
+            continue
+        product = title_el.get_text(strip=True)
+        shop = shop_el.get_text(strip=True)
+        due_el = card.select_one(".pcard__due")
+        method_el = card.select_one(".pcard__method")
+        cta_el = card.select_one(".pcard__cta")
+        deadline, announced = "", ""
+        if due_el:
+            due_text = due_el.get_text(" ", strip=True)
+            before, _, after = due_text.partition("発表")
+            deadline = before.replace("締切", "").strip()
+            announced = f"発表 {after.strip()}" if after else ""
+        entries[entry_id] = {
+            "shop": shop,
+            "product": product,
+            "area": "",
+            "deadline": deadline,
+            "method": method_el.get_text(strip=True) if method_el else "",
+            "summary": announced,
+            "link": cta_el["href"] if cta_el and cta_el.has_attr("href") else url,
+        }
+    return entries
+
+
 PARSERS = {
     "pokeca_navi": _parse_pokeca_navi,
     "cardchusen": _parse_cardchusen,
+    "toreka_chusen": _parse_toreka_chusen,
 }
 
 
