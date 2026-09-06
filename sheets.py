@@ -58,6 +58,51 @@ def _extract_product_code(name: str) -> str | None:
     match = PRODUCT_CODE_PATTERN.search(name.upper().replace(" ", ""))
     return match.group(0) if match else None
 
+
+# 商品名の先頭にゲーム名がそのまま入っていることがあるが、種別(E列)で既にゲームは
+# 分かっているので対象(G列)まで繰り返す必要はない。長い表記から先に判定しないと
+# 短い表記が先にマッチして残ってしまうので、長いものから順に並べる。
+_REDUNDANT_GAME_PREFIXES: dict[str, tuple[str, ...]] = {
+    "ワンピース": ("ONE PIECEカードゲーム", "ONE PIECE カードゲーム", "ワンピースカードゲーム"),
+    "ドラゴンボール": (
+        "ドラゴンボールスーパーカードゲーム フュージョンワールド",
+        "ドラゴンボール超カードゲーム フュージョンワールド",
+        "ドラゴンボールスーパーカードゲーム",
+        "ドラゴンボール超カードゲーム",
+        "ドラゴンボール フュージョンワールド",
+    ),
+}
+
+
+def _strip_redundant_game_prefix(game: str, product: str) -> str:
+    for prefix in _REDUNDANT_GAME_PREFIXES.get(game, ()):
+        if product.startswith(prefix):
+            return product[len(prefix):].strip()
+    return product
+
+
+# 型番一致・部分一致のどちらでも同一商品と判定できない場合に、最後の手段として使う
+# トークン一致。「30th CELEBRATION エーフィ・ブラッキー」と「プレミアムデッキセット
+# エーフィ・ブラッキー」のように、サイトごとに前置き(拡張名/梱包形態)だけが違って
+# 肝心の商品を特定する部分(キャラクター名など)は同じ、というケースを拾うためのもの。
+# 梱包形態を表す一般語は複数の別商品にまたがって使われるため除外し、さらに仮名/漢字を
+# 含まないトークン(拡張名の英語表記や型番になっていない数字など、これも複数商品に
+# またがりがち)も除外する。これにより「30th CELEBRATION」のような拡張名だけが
+# 偶然一致しても別商品として扱われる(前置きだけの一致では同一商品と判定しない)。
+_GENERIC_PRODUCT_TOKENS = {
+    "プレミアムデッキセット", "スタートデッキ", "ブースターパック", "カードセット",
+    "スペシャルセット", "拡張パック", "強化拡張パック", "エクストラブースター",
+}
+_KANA_KANJI_PATTERN = re.compile(r"[぀-ヿ㐀-鿿]")
+
+
+def _product_tokens(name: str) -> set[str]:
+    tokens = re.split(r"[\s　]+", name)
+    return {
+        t for t in tokens
+        if t and t not in _GENERIC_PRODUCT_TOKENS and len(t) >= 3 and _KANA_KANJI_PATTERN.search(t)
+    }
+
 _client = None
 _spreadsheet = None
 _tried = False
@@ -199,26 +244,45 @@ def _append_product_to_calc_table(game: str, product: str) -> None:
 
 def _resolve_product_name(game: str, product: str) -> str:
     """Masterシートの商品名リスト(D/E/F列)と突き合わせる。
+    0. 商品名先頭のゲーム名の重複表記(種別列で既に分かっているもの)を取り除く
     1. 型番(OP-17など)が一致すれば表記ゆれがあっても同一商品とみなし、既存名を返す
     2. 型番がない/一致しない場合は部分一致で判定する
-    3. どちらでも判断できない場合は既存名を推測せず、新規行として最下行に追加する"""
+    3. 部分一致もなければ、梱包形態などの前置きだけが違うトークン一致で判定する
+    4. どれでも判断できない場合は既存名を推測せず、新規行として最下行に追加する"""
     spreadsheet = _get_spreadsheet()
     col = MASTER_GAME_COLUMNS.get(game)
     if spreadsheet is None or col is None:
         return product
 
+    product = _strip_redundant_game_prefix(game, product)
+
     master = spreadsheet.worksheet(MASTER_SHEET_NAME)
     existing = master.col_values(col)[1:]  # 先頭行(見出し)を除く
 
+    def _matched(row_index: int, name: str) -> str:
+        """一致した既存名を返す前に、その名前自体に重複プレフィックスが残っていれば
+        ここでMasterシート側も直してしまう(再検知のたびに古い表記がそのまま
+        使われ続けるのを防ぐ、いわば通りがかりでの自己修復)。"""
+        clean = _strip_redundant_game_prefix(game, name)
+        if clean != name:
+            master.update_cell(row_index + 2, col, clean)
+        return clean
+
     product_code = _extract_product_code(product)
     if product_code:
-        for name in existing:
+        for i, name in enumerate(existing):
             if name and _extract_product_code(name) == product_code:
-                return name
+                return _matched(i, name)
 
-    for name in existing:
+    for i, name in enumerate(existing):
         if name and (name == product or name in product or product in name):
-            return name
+            return _matched(i, name)
+
+    product_tokens = _product_tokens(product)
+    if product_tokens:
+        for i, name in enumerate(existing):
+            if name and product_tokens & _product_tokens(name):
+                return _matched(i, name)
 
     master.update_cell(len(existing) + 2, col, product)
     _append_product_to_calc_table(game, product)
