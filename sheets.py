@@ -607,5 +607,62 @@ def sync_calc_type_table() -> None:
             values=[[game, total, won, lost, pending, rate]],
             value_input_option="USER_ENTERED",
         )
+
+        border_style = {"style": "SOLID", "width": 1}
+        service.spreadsheets().batchUpdate(
+            spreadsheetId=SPREADSHEET_ID,
+            body={
+                "requests": [
+                    {
+                        "updateBorders": {
+                            "range": {
+                                "sheetId": calc.id,
+                                "startRowIndex": header_row - 1,
+                                "endRowIndex": insert_at,
+                                "startColumnIndex": 0,
+                                "endColumnIndex": 6,
+                            },
+                            "top": border_style,
+                            "bottom": border_style,
+                            "left": border_style,
+                            "right": border_style,
+                            "innerHorizontal": border_style,
+                            "innerVertical": border_style,
+                        }
+                    }
+                ]
+            },
+        ).execute()
+
         print(f"[INFO] added '{game}' row to 計算 sheet's 【種別】table (row {insert_at})")
         last_row = insert_at
+
+
+def sync_calc_product_table() -> None:
+    """Masterシートの全商品と「計算」シートの【商品別】表を突き合わせ、Masterにはあるが
+    表にまだ行が無い商品があれば自動で追加する(_append_product_to_calc_tableを流用するので
+    罫線・COUNTIF数式・価格取得トリガーへの登録も新商品追加時と同じように行われる)。
+    ゲームがまだMASTER_GAME_COLUMNSに無かった時期に登録された商品(遊戯王等)や、
+    ユーザーがMasterへ直接追記した商品(ガンダム等)を拾うための定期同期。
+    GOOGLE_SERVICE_ACCOUNT_JSON が未設定の場合は何もしない。"""
+    spreadsheet = _get_spreadsheet()
+    if spreadsheet is None:
+        return
+
+    master = spreadsheet.worksheet(MASTER_SHEET_NAME)
+    games = _master_game_columns(master)
+
+    calc = spreadsheet.worksheet(CALC_SHEET_NAME)
+    header_row = _find_calc_section(calc, CALC_PRODUCT_HEADER_A, CALC_PRODUCT_HEADER_B)
+    if header_row is None:
+        return
+
+    existing = calc.get(f"A{header_row + 1}:B1000")
+    existing_pairs = {(row[0], row[1]) for row in existing if len(row) >= 2}
+
+    for game, col in games.items():
+        for name in master.col_values(col)[1:]:
+            if name and (game, name) not in existing_pairs:
+                _append_product_to_calc_table(game, name)
+                existing_pairs.add((game, name))
+                print(f"[INFO] added '{game} / {name}' row to 計算 sheet's 【商品別】table")

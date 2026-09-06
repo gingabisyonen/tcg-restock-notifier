@@ -10,7 +10,13 @@ from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 
 from notify import send_discord_message
-from sheets import append_lottery_row, pop_new_calc_rows, sync_calc_type_table, sync_date_sheet_view
+from sheets import (
+    append_lottery_row,
+    pop_new_calc_rows,
+    sync_calc_product_table,
+    sync_calc_type_table,
+    sync_date_sheet_view,
+)
 
 ROOT = Path(__file__).parent
 TARGETS_FILE = ROOT / "targets.yaml"
@@ -544,6 +550,11 @@ def main() -> None:
         sync_calc_type_table()
     except Exception as exc:
         print(f"[WARN] failed to sync 計算 sheet's 【種別】 table: {exc}", file=sys.stderr)
+
+    try:
+        sync_calc_product_table()
+    except Exception as exc:
+        print(f"[WARN] failed to sync 計算 sheet's 【商品別】 table: {exc}", file=sys.stderr)
 
     # 新商品が「計算」シートに追加された場合、その行番号をGitHub Actionsのoutputに渡す。
     # ワークフロー側がこれを見て、その商品だけtcg-collection-trackerの価格取得を即時実行する
