@@ -52,11 +52,19 @@ DEADLINE_MD_PATTERN = re.compile(r"(\d{1,2})/(\d{1,2})")
 # 商品名に含まれる型番(例: OP-17, ST01, FB01)を拾うためのパターン。
 # 表記ゆれ(語順・括弧の種類違いなど)があっても型番さえ一致すれば同一商品とみなす。
 PRODUCT_CODE_PATTERN = re.compile(r"[A-Z]{1,4}-?\d{2,3}[A-Z]?")
+# 型番は実データ上、必ず【】または[]の中に書かれている。括弧の外まで探すと
+# 「MEGA 30th CELEBRATION」のような順序数字("30th")がスペース除去後に
+# 「MEGA30T」という偽の型番として誤検出され、無関係の別商品を同一視してしまう
+# (実際にこの不具合で別商品を誤って統合してしまったことがある)。
+_BRACKETED_TEXT_PATTERN = re.compile(r"[【\[]([^】\]]*)[】\]]")
 
 
 def _extract_product_code(name: str) -> str | None:
-    match = PRODUCT_CODE_PATTERN.search(name.upper().replace(" ", ""))
-    return match.group(0) if match else None
+    for bracket_content in _BRACKETED_TEXT_PATTERN.findall(name):
+        match = PRODUCT_CODE_PATTERN.search(bracket_content.upper().replace(" ", ""))
+        if match:
+            return match.group(0)
+    return None
 
 
 # 商品名の先頭にゲーム名がそのまま入っていることがあるが、種別(E列)で既にゲームは
@@ -242,13 +250,45 @@ def _append_product_to_calc_table(game: str, product: str) -> None:
     _new_calc_rows.append(new_row)
 
 
+def _find_matching_index(product: str, existing: list[str]) -> int | None:
+    """商品名リストの中から同一商品と思われるものを探し、そのインデックスを返す。
+    1. 型番(OP-17など)が一致すれば表記ゆれがあっても同一商品とみなす
+    2. 完全一致は部分一致より必ず優先する(重要: 「30th CELEBRATION」と
+       「30th CELEBRATION エーフィ・ブラッキー」のように、短い方も長い方も別商品として
+       両方Masterに登録されているケースで、部分一致だけで判定するとリストの並び順次第で
+       完全一致のはずの商品が短い方に誤って寄せられてしまったことがある。そのため部分一致は
+       全件について完全一致が無いと確認してから初めて試す)
+    3. 完全一致も部分一致もなければ、梱包形態などの前置きだけが違うトークン一致で判定する
+    4. どれでも判断できなければ None"""
+    product_code = _extract_product_code(product)
+    if product_code:
+        for i, name in enumerate(existing):
+            if name and _extract_product_code(name) == product_code:
+                return i
+
+    for i, name in enumerate(existing):
+        if name and name == product:
+            return i
+
+    for i, name in enumerate(existing):
+        if name and (name in product or product in name):
+            return i
+
+    product_tokens = _product_tokens(product)
+    if product_tokens:
+        for i, name in enumerate(existing):
+            if name and product_tokens & _product_tokens(name):
+                return i
+
+    return None
+
+
 def _resolve_product_name(game: str, product: str) -> str:
-    """Masterシートの商品名リスト(D/E/F列)と突き合わせる。
+    """Masterシートの商品名リスト(D/E/F列)と突き合わせる(判定順は_find_matching_index参照)。
     0. 商品名先頭のゲーム名の重複表記(種別列で既に分かっているもの)を取り除く
-    1. 型番(OP-17など)が一致すれば表記ゆれがあっても同一商品とみなし、既存名を返す
-    2. 型番がない/一致しない場合は部分一致で判定する
-    3. 部分一致もなければ、梱包形態などの前置きだけが違うトークン一致で判定する
-    4. どれでも判断できない場合は既存名を推測せず、新規行として最下行に追加する"""
+    一致する既存名が見つかった場合、その名前自体に重複プレフィックスが残っていれば
+    Masterシート側もその場で直す(再検知のたびに古い表記が使われ続けるのを防ぐ、
+    いわば通りがかりでの自己修復)。見つからなければ新規行として最下行に追加する。"""
     spreadsheet = _get_spreadsheet()
     col = MASTER_GAME_COLUMNS.get(game)
     if spreadsheet is None or col is None:
@@ -259,30 +299,13 @@ def _resolve_product_name(game: str, product: str) -> str:
     master = spreadsheet.worksheet(MASTER_SHEET_NAME)
     existing = master.col_values(col)[1:]  # 先頭行(見出し)を除く
 
-    def _matched(row_index: int, name: str) -> str:
-        """一致した既存名を返す前に、その名前自体に重複プレフィックスが残っていれば
-        ここでMasterシート側も直してしまう(再検知のたびに古い表記がそのまま
-        使われ続けるのを防ぐ、いわば通りがかりでの自己修復)。"""
+    match_index = _find_matching_index(product, existing)
+    if match_index is not None:
+        name = existing[match_index]
         clean = _strip_redundant_game_prefix(game, name)
         if clean != name:
-            master.update_cell(row_index + 2, col, clean)
+            master.update_cell(match_index + 2, col, clean)
         return clean
-
-    product_code = _extract_product_code(product)
-    if product_code:
-        for i, name in enumerate(existing):
-            if name and _extract_product_code(name) == product_code:
-                return _matched(i, name)
-
-    for i, name in enumerate(existing):
-        if name and (name == product or name in product or product in name):
-            return _matched(i, name)
-
-    product_tokens = _product_tokens(product)
-    if product_tokens:
-        for i, name in enumerate(existing):
-            if name and product_tokens & _product_tokens(name):
-                return _matched(i, name)
 
     master.update_cell(len(existing) + 2, col, product)
     _append_product_to_calc_table(game, product)
