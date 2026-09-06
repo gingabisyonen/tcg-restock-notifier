@@ -12,11 +12,19 @@ DATE_SHEET_NAME = "抽選"  # 旧シート名は "Date"(2026-08-23にユーザ�
 MASTER_SHEET_NAME = "Master"
 CALC_SHEET_NAME = "計算"
 
-# 「計算」シートの【商品別】表の位置(2026-08-23作成時点でハードコード)。
+# 「計算」シートの【商品別】表の列構成。
 # A=種別 B=商品名 C=定価額 D=相場額 E=総件数 F=当選 G=落選 H=保留 I=当選率(%)
 # 定価額・相場額はtcg-collection-tracker側のupdate_lottery_prices.pyが日次で埋める(手入力の値は上書きしない)。
-CALC_PRODUCT_HEADER_ROW = 24
-CALC_PRODUCT_DATA_START_ROW = 25
+# 行位置は【種別】表への行追加(sync_calc_type_table)で下にずれうるため、ハードコードせず
+# 見出し行のテキスト(A列="種別",B列="商品名")を毎回検索して求める(_find_calc_section参照)。
+CALC_PRODUCT_HEADER_A = "種別"
+CALC_PRODUCT_HEADER_B = "商品名"
+
+# 「計算」シートの【種別】表の見出し。セクションタイトル行("【種別】"等)は手動編集で表記ゆれが
+# 起きうる(実際に"【担当者別】"と重複タイプミスされていたことがある)ため、見出し行そのもの
+# (A列="種別",B列="総件数")をアンカーにする。
+CALC_TYPE_HEADER_A = "種別"
+CALC_TYPE_HEADER_B = "総件数"
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
@@ -35,13 +43,19 @@ STATUS_APPLIED = "応募済み"
 STATUS_LOST = "落選"
 STATUS_WON = "当選"
 
-# ゲームラベル(Masterシート「種類」列の表記と一致させる) -> Masterシートの商品名リストの列番号(A=1)
-# B列にステータス列を追加したため、ポケカ以降は1列ずつ右にずれている
-MASTER_GAME_COLUMNS = {
-    "ポケカ": 5,        # E列
-    "ワンピース": 6,     # F列
-    "ドラゴンボール": 7,  # G列
-}
+# Masterシートは A=入力 B=ステータス C=種類 D=店舗、E列以降がゲームごとの商品名リストで、
+# ヘッダー行(1行目)のセルがそのままゲームラベル(種別)になっている。新しいゲーム列が
+# 追加されてもコードを直さずに済むよう、ハードコードした対応表ではなく毎回ヘッダー行から動的に読む。
+MASTER_GAME_FIRST_COL = 5  # E列
+
+
+def _master_game_columns(master) -> dict[str, int]:
+    header = master.row_values(1)
+    return {
+        name: i
+        for i, name in enumerate(header[MASTER_GAME_FIRST_COL - 1:], start=MASTER_GAME_FIRST_COL)
+        if name
+    }
 
 ANNOUNCE_DATE_PATTERN = re.compile(r"(?:当選発表|抽選結果|結果発表)\D{0,10}?(\d{1,2})月(\d{1,2})日")
 
@@ -201,6 +215,18 @@ def pop_new_calc_rows() -> list[int]:
     return rows
 
 
+def _find_calc_section(calc, header_a: str, header_b: str) -> int | None:
+    """「計算」シート内で、A列がheader_a・B列がheader_bと一致する見出し行を探し、その行番号を返す。
+    見出し行の直上にあるセクションタイトル("【種別】"等)は手打ちで表記ゆれが起きうる
+    (実際に別セクションのタイトルがコピペミスで重複していたことがある)ため、
+    見出し行そのものをアンカーにすることでその手のミスに影響されないようにする。"""
+    rows = calc.get("A1:B200")
+    for i, row in enumerate(rows, start=1):
+        if len(row) >= 2 and row[0] == header_a and row[1] == header_b:
+            return i
+    return None
+
+
 def _append_product_to_calc_table(game: str, product: str) -> None:
     """Masterシートに新商品が追加された時、「計算」シートの【商品別】表の最下行にも
     集計行を1行追加する(種別ごとのグループ分けはせず、単純に表全体の最後に追記する)。
@@ -211,8 +237,12 @@ def _append_product_to_calc_table(game: str, product: str) -> None:
         return
 
     calc = spreadsheet.worksheet(CALC_SHEET_NAME)
-    existing_names = calc.get(f"A{CALC_PRODUCT_DATA_START_ROW}:A1000")
-    new_row = CALC_PRODUCT_DATA_START_ROW + len(existing_names)
+    header_row = _find_calc_section(calc, CALC_PRODUCT_HEADER_A, CALC_PRODUCT_HEADER_B)
+    if header_row is None:
+        return
+    data_start_row = header_row + 1
+    existing_names = calc.get(f"A{data_start_row}:A1000")
+    new_row = data_start_row + len(existing_names)
 
     total = f"=COUNTIF('{DATE_SHEET_NAME}'!$G:$G,B{new_row})"
     won = f"=COUNTIFS('{DATE_SHEET_NAME}'!$G:$G,B{new_row},'{DATE_SHEET_NAME}'!$F:$F,\"{STATUS_WON}\")"
@@ -230,7 +260,7 @@ def _append_product_to_calc_table(game: str, product: str) -> None:
         "updateBorders": {
             "range": {
                 "sheetId": calc.id,
-                "startRowIndex": CALC_PRODUCT_HEADER_ROW - 1,
+                "startRowIndex": header_row - 1,
                 "endRowIndex": new_row,
                 "startColumnIndex": 0,
                 "endColumnIndex": 9,
@@ -290,13 +320,15 @@ def _resolve_product_name(game: str, product: str) -> str:
     Masterシート側もその場で直す(再検知のたびに古い表記が使われ続けるのを防ぐ、
     いわば通りがかりでの自己修復)。見つからなければ新規行として最下行に追加する。"""
     spreadsheet = _get_spreadsheet()
-    col = MASTER_GAME_COLUMNS.get(game)
-    if spreadsheet is None or col is None:
+    if spreadsheet is None:
+        return product
+
+    master = spreadsheet.worksheet(MASTER_SHEET_NAME)
+    col = _master_game_columns(master).get(game)
+    if col is None:
         return product
 
     product = _strip_redundant_game_prefix(game, product)
-
-    master = spreadsheet.worksheet(MASTER_SHEET_NAME)
     existing = master.col_values(col)[1:]  # 先頭行(見出し)を除く
 
     match_index = _find_matching_index(product, existing)
@@ -505,3 +537,75 @@ def sync_date_sheet_view() -> None:
     service.spreadsheets().batchUpdate(
         spreadsheetId=SPREADSHEET_ID, body={"requests": [request]}
     ).execute()
+
+
+def sync_calc_type_table() -> None:
+    """Masterシートのヘッダー行(ゲーム列)と「計算」シートの【種別】表を突き合わせ、
+    Masterには追加済みだが【種別】表にまだ行が無いゲームがあれば、既存行と同じ書式の
+    集計行(COUNTIF/COUNTIFSベース)を自動で追加する。ガンダムのような新ゲームを
+    Masterに追加した後、この表だけ手直しし忘れるのを防ぐための定期同期(check.pyの
+    実行のたびに呼ばれる)。表の途中への行挿入になるため、直下にある【商品別】表などは
+    Sheets側の挿入機能で自動的に下にずれる(以降の商品別表の位置は_find_calc_sectionで
+    毎回動的に探すので、ずれても問題ない)。
+    GOOGLE_SERVICE_ACCOUNT_JSON が未設定の場合は何もしない。"""
+    spreadsheet = _get_spreadsheet()
+    service = _get_sheets_service()
+    if spreadsheet is None or service is None:
+        return
+
+    master = spreadsheet.worksheet(MASTER_SHEET_NAME)
+    games = list(_master_game_columns(master).keys())
+
+    calc = spreadsheet.worksheet(CALC_SHEET_NAME)
+    header_row = _find_calc_section(calc, CALC_TYPE_HEADER_A, CALC_TYPE_HEADER_B)
+    if header_row is None:
+        return
+
+    data_start_row = header_row + 1
+    raw_rows = calc.get(f"A{data_start_row}:A1000")
+    existing_games: set[str] = set()
+    for row in raw_rows:
+        # 最初の空行で打ち切る。get()は末尾の空行しか自動で切り詰めないため、ここで
+        # 止めないと表の下に続く【商品別】表などまで「【種別】表の行」として読んでしまう。
+        if not row or not row[0]:
+            break
+        existing_games.add(row[0])
+    last_row = data_start_row + len(existing_games) - 1
+
+    missing = [g for g in games if g not in existing_games]
+    if not missing:
+        return
+
+    for game in missing:
+        insert_at = last_row + 1  # 1始まりの行番号(この行の位置に新しい空行を挿入する)
+        service.spreadsheets().batchUpdate(
+            spreadsheetId=SPREADSHEET_ID,
+            body={
+                "requests": [
+                    {
+                        "insertDimension": {
+                            "range": {
+                                "sheetId": calc.id,
+                                "dimension": "ROWS",
+                                "startIndex": insert_at - 1,
+                                "endIndex": insert_at,
+                            },
+                            "inheritFromBefore": True,
+                        }
+                    }
+                ]
+            },
+        ).execute()
+
+        total = f"=COUNTIF('{DATE_SHEET_NAME}'!E:E,\"{game}\")"
+        won = f"=COUNTIFS('{DATE_SHEET_NAME}'!E:E,\"{game}\",'{DATE_SHEET_NAME}'!F:F,\"{STATUS_WON}\")"
+        lost = f"=COUNTIFS('{DATE_SHEET_NAME}'!E:E,\"{game}\",'{DATE_SHEET_NAME}'!F:F,\"{STATUS_LOST}\")"
+        pending = f"=B{insert_at}-C{insert_at}-D{insert_at}"
+        rate = f"=IF(C{insert_at}+D{insert_at}=0,0,ROUND(C{insert_at}/(C{insert_at}+D{insert_at})*100,1))"
+        calc.update(
+            range_name=f"A{insert_at}:F{insert_at}",
+            values=[[game, total, won, lost, pending, rate]],
+            value_input_option="USER_ENTERED",
+        )
+        print(f"[INFO] added '{game}' row to 計算 sheet's 【種別】table (row {insert_at})")
+        last_row = insert_at
