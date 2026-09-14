@@ -5,7 +5,6 @@
     "card-fb09-dual-evolution-oretan-okayama-2026-09-17",
     "card-fb10-cross-force-carderia-ikebukuro-20260916",
     "card-fb10-cross-force-oretan-okayama-2026-09-17",
-    "card-fb10-cross-force-torecacapital-hiroshima-2026-09-06",
     "card-fb11-brightness-of-hope-asobiba-yokohama-vivre-2026-09-09",
     "card-fb11-brightness-of-hope-batoloco-satellite-shibuya-2026-09-08",
     "card-fb11-brightness-of-hope-bic-camera-nagoya-jrgate-2026-09-09",
@@ -48,7 +47,8 @@
     "card-st01-story-booster-cardbuncle",
     "card-st01-story-booster-oretan-fukuoka-tenjin-2026-09-17",
     "card-st01-story-booster-oretan-matsuyama-2026-09-17",
-    "card-st01-story-booster-oretan-okayama-2026-09-17"
+    "card-st01-story-booster-oretan-okayama-2026-09-17",
+    "card-st01-story-booster-toreca-park-yokohama-nishiguchi-2026-09-13"
   ],
   "__list__カード抽選まとめ - ワンピース (愛知配送対応分)": [
     "card-c-labo-tokorozawa-op17-2026-08-07",
@@ -64,18 +64,24 @@
     "card-op13-uketsugareru-ishi-carderia-ikebukuro-20260916",
     "card-op14-soukai-mugiwara-store-20260913",
     "card-op14-soukai-toreka-ace-katsuta-higashiishikawa-2026-09-13",
+    "card-op14-soukai-tsutaya-fukui-takayanagi-2026-09-16",
     "card-op14-soukai-tsutaya-nakatsu-2026-09-09",
+    "card-op14-soukai-yamashiroya-2026-09-15",
     "card-op15-kaminoshima-mint-shinjuku-2026-09-09",
     "card-op15-kaminoshima-mugiwara-store-20260913",
     "card-op15-kaminoshima-toreka-ace-katsuta-higashiishikawa-2026-09-13",
+    "card-op15-kaminoshima-tsutaya-fukui-takayanagi-2026-09-16",
     "card-op15-kaminoshima-tsutaya-nakatsu-2026-09-09",
+    "card-op15-kaminoshima-yamashiroya-2026-09-15",
     "card-op16-kessen-no-toki-amazon-jp-none",
     "card-op16-kessen-no-toki-furu1-hikarigaoka-2026-09-08",
     "card-op16-kessen-no-toki-furu1-malera-gifu-2026-08-22",
     "card-op16-kessen-no-toki-mint-shinjuku-2026-09-09",
     "card-op16-kessen-no-toki-toreka-ace-katsuta-higashiishikawa-2026-09-13",
     "card-op16-kessen-no-toki-tsutaya-abenobashi-2026-09-13",
+    "card-op16-kessen-no-toki-tsutaya-fukui-takayanagi-2026-09-16",
     "card-op16-kessen-no-toki-tsutaya-nakatsu-2026-09-09",
+    "card-op16-kessen-no-toki-yamashiroya-2026-09-15",
     "card-op17-c-labo-akihabara-radiokaikan-2026-09-10",
     "card-op17-saikyo-no-senshi-aeon-style-online-2026-09-21",
     "card-op17-saikyo-no-senshi-amazon-jp-none",
@@ -114,6 +120,7 @@
     "card-op17-saikyo-no-senshi-kusamura-kakamigahara-none",
     "card-op17-saikyo-no-senshi-lit-tenjin-kokura-none",
     "card-op17-saikyo-no-senshi-namco-parks-2026-09-15",
+    "card-op17-saikyo-no-senshi-op-official-shop-2026-09-15",
     "card-op17-saikyo-no-senshi-oretan-fukuoka-tenjin-2026-09-17",
     "card-op17-saikyo-no-senshi-oretan-matsuyama-2026-09-17",
     "card-op17-saikyo-no-senshi-oretan-okayama-2026-09-17",
@@ -135,7 +142,9 @@
     "card-uketsugareru-ishi-mugiwara-store-20260913",
     "card-uketsugareru-ishi-toreka-ace-katsuta-higashiishikawa-2026-09-13",
     "card-uketsugareru-ishi-tsutaya-card-kinshicho-2026-09-08",
-    "card-uketsugareru-ishi-tsutaya-nakatsu-2026-09-09"
+    "card-uketsugareru-ishi-tsutaya-fukui-takayanagi-2026-09-16",
+    "card-uketsugareru-ishi-tsutaya-nakatsu-2026-09-09",
+    "card-uketsugareru-ishi-yamashiroya-2026-09-15"
   ],
   "__list__トレチュー - ドラゴンボール (愛知+郵送)": [
     "/lottery/story-booster-01-aeon-style-online-20260921/"
