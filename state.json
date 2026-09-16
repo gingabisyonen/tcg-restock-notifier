@@ -182,7 +182,6 @@
   "__list__トレチュー - ワンピース (愛知+郵送)": [
     "/lottery/heroines-edition-aeon-style-online-20260921/",
     "/lottery/heroines-edition-vol2-amazon-invite/",
-    "/lottery/kami-no-shima-furuichi-nagoya-osu-20260916/",
     "/lottery/kessen-no-toki-amazon-invite/",
     "/lottery/ouzoku-no-kettou-amazon-invite/",
     "/lottery/strongest-warrior-aeon-style-online-20260921/",
@@ -191,14 +190,22 @@
     "/lottery/strongest-warrior-pokechop-tachikawa-20260812/"
   ],
   "__list__ポケカ抽選図鑑 (愛知の抽選)": [
+    "DMMマイカ / 30th CELEBRATION BOX",
     "イオンスタイルオンライン / 拡張パック「メガブレイブ/メガシンフォニア」",
     "カードクルー / 30th CELEBRATION BOX",
+    "カード・ブランチ本山店 / プレミアムデッキセット エーフィ・ブラッキー",
+    "カード・ブランチ金山店 / プレミアムデッキセット エーフィ・ブラッキー",
     "ガンギ(GANGI) / スペシャルデッキセットex フシギバナ・リザードン・カメックス",
+    "トレカプラザ55通販店 / 30th CELEBRATION BOX",
     "ブックオフ名古屋豊国通店 / プレミアムデッキセット エーフィ・ブラッキー",
+    "ホビーサーチ / 30th CELEBRATION BOX",
+    "ホビーサーチ / プレミアムデッキセット エーフィ・ブラッキー",
     "ポケモンカード / ストームエメラルダ",
     "ポケモンカードゲーム30th CELEBRATION EVENT / 30th CELEBRATION BOX",
     "ポケモンセンター / 30th CELEBRATION BOX",
     "三洋堂書店 / 30th CELEBRATION BOX",
+    "駿河屋 名古屋大須 / 30th CELEBRATION BOX",
+    "駿河屋 名古屋大須 / プレミアムデッキセット エーフィ・ブラッキー",
     "高砂ウエストビーチジム / 30th CELEBRATION BOX"
   ],
   "イエローサブマリン ONE PIECEカードゲーム": false,
@@ -208,7 +215,7 @@
   "トイザらス ポケモン": false,
   "プレイズ 公式通販": false,
   "ホビーステーション ニュース": true,
-  "ポケモンセンターオンライン 新商品": false,
+  "ポケモンセンターオンライン 新商品": true,
   "ヨドバシ.com ポケモンカード": false,
   "三洋堂書店 抽選販売": false
 }
