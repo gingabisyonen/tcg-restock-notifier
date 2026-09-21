@@ -1,5 +1,6 @@
 {
   "TCGshop193": false,
+  "__empty_since__トレチュー - ドラゴンボール (愛知+郵送)": "2026-09-21",
   "__list__カード抽選まとめ - ドラゴンボール (愛知配送対応分)": [
     "card-fb09-dual-evolution-carderia-ikebukuro-20260916",
     "card-fb09-dual-evolution-kiddyland-lalaport-fujimi-2026-09-21",
@@ -28,14 +29,11 @@
     "card-fb11-brightness-of-hope-mint-games-ikebukuro-2026-09-09",
     "card-fb11-brightness-of-hope-mint-okinawa-2026-09-08",
     "card-fb11-brightness-of-hope-premium-bandai-2026-09-17",
-    "card-fb11-brightness-of-hope-ryuunoshippo-2026-09-06",
     "card-fb11-brightness-of-hope-seagull-2026-09-07",
     "card-fb11-brightness-of-hope-shimamura-park-2026-09-13",
     "card-fb11-brightness-of-hope-takarajima-nagakute-none",
     "card-fb11-brightness-of-hope-tier-one-2026-09-09",
-    "card-fb11-brightness-of-hope-toreca-champion-ichinomiya-2026-09-06",
     "card-fb11-brightness-of-hope-tsutaya-fukui-takayanagi-2026-09-09",
-    "card-fb11-brightness-of-hope-tsutaya-interpark-2026-09-06",
     "card-fb11-brightness-of-hope-tsutaya-rifu-2026-09-08",
     "card-fb11-brightness-of-hope-tsutaya-sanyo-none",
     "card-st01-story-booster-aeon-style-online-2026-09-21",
@@ -82,7 +80,6 @@
     "card-op16-kessen-no-toki-amazon-jp-none",
     "card-op16-kessen-no-toki-furu1-malera-gifu-2026-08-22",
     "card-op16-kessen-no-toki-mugiwara-store-shibuya-ikebukuro-umeda-2026-09-22",
-    "card-op16-kessen-no-toki-toreka-ace-katsuta-higashiishikawa-2026-09-13",
     "card-op16-kessen-no-toki-tsutaya-fukui-takayanagi-2026-09-16",
     "card-op16-kessen-no-toki-yamashiroya-2026-09-15",
     "card-op17-saikyo-no-senshi-aeon-style-online-2026-09-21",
@@ -104,7 +101,6 @@
     "card-op17-saikyo-no-senshi-corgi-nagoya-none",
     "card-op17-saikyo-no-senshi-furu1-toda-2026-09-21",
     "card-op17-saikyo-no-senshi-furuichi-kofu-showa-2026-09-13",
-    "card-op17-saikyo-no-senshi-futaba-alti-fukuyama-2026-09-13",
     "card-op17-saikyo-no-senshi-futaba-alti-fukuyama-none",
     "card-op17-saikyo-no-senshi-futaba-tsutaya-kabe-center-2026-09-13",
     "card-op17-saikyo-no-senshi-futaba-tsutaya-kabe-center-none",
@@ -125,7 +121,6 @@
     "card-op17-saikyo-no-senshi-shimamura-park-2026-09-20",
     "card-op17-saikyo-no-senshi-tokyo-otaku-mode-2026-09-15",
     "card-op17-saikyo-no-senshi-toreka-ace-shintoride",
-    "card-op17-saikyo-no-senshi-tsutaya-abenobashi-2026-09-13",
     "card-op17-saikyo-no-senshi-tsutaya-fukui-takayanagi-none",
     "card-op17-saikyo-no-senshi-tsutaya-ichinoseki-chuo-2026-08-16",
     "card-op17-saikyo-no-senshi-tsutaya-sapporo-kikusui-2026-09-20",
@@ -141,9 +136,7 @@
     "card-uketsugareru-ishi-water-kashiwa-ekimae-2026-09-19",
     "card-uketsugareru-ishi-yamashiroya-2026-09-15"
   ],
-  "__list__トレチュー - ドラゴンボール (愛知+郵送)": [
-    "/lottery/story-booster-01-aeon-style-online-20260921/"
-  ],
+  "__list__トレチュー - ドラゴンボール (愛知+郵送)": [],
   "__list__トレチュー - ポケカ (愛知+郵送)": [
     "/lottery/30th-celebration-amazon-invite/",
     "/lottery/30th-celebration-card-set-amazon-invite/",
@@ -169,11 +162,9 @@
     "/lottery/battle-collection-hlj-20260923/",
     "/lottery/battle-collection-torecaplaza55-20260925/",
     "/lottery/crimson-haze-gangi-hobbyshop-20260923/",
-    "/lottery/mega-brave-aeon-style-online-20260921/",
     "/lottery/mega-brave-bic-camera-nagoya-gate-tower-20260922/",
     "/lottery/mega-brave-fewmany-online-20260924/",
     "/lottery/mega-brave-torecaplaza55-20260925/",
-    "/lottery/mega-symphonia-aeon-style-online-20260921/",
     "/lottery/mega-symphonia-fewmany-online-20260924/",
     "/lottery/mega-symphonia-torecaplaza55-20260925/",
     "/lottery/starter-set-ex-torecaplaza55-20260925/",
@@ -185,11 +176,9 @@
     "/lottery/storm-emeralda-torecaplaza55-20260925/"
   ],
   "__list__トレチュー - ワンピース (愛知+郵送)": [
-    "/lottery/heroines-edition-aeon-style-online-20260921/",
     "/lottery/heroines-edition-vol2-amazon-invite/",
     "/lottery/kessen-no-toki-amazon-invite/",
     "/lottery/ouzoku-no-kettou-amazon-invite/",
-    "/lottery/strongest-warrior-aeon-style-online-20260921/",
     "/lottery/strongest-warrior-amazon-invite/",
     "/lottery/strongest-warrior-corgi-r-nagoya-20260810/",
     "/lottery/strongest-warrior-mugiwara-store-nagoya-20260922/",
@@ -202,11 +191,9 @@
     "FEWMANYオンライン / メガブレイブ",
     "GEO / 30th CELEBRATION BOX",
     "GEO / 30th CELEBRATION カードセット(9種セット)",
-    "イオンスタイルオンライン / 拡張パック「メガブレイブ/メガシンフォニア」",
     "ガンギ(GANGI) / クリムゾンヘイズ BOX",
     "トレカプラザ55通販店 / 30th CELEBRATION BOX",
     "ポケモンカード / ストームエメラルダ",
-    "ポケモンカードラウンジ / 30th CELEBRATION BOX",
     "三洋堂書店 / 30th CELEBRATION BOX",
     "晴れる屋2 通販 / ストームエメラルダ",
     "高砂ウエストビーチジム / 30th CELEBRATION BOX"
