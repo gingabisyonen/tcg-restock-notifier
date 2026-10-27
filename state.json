@@ -93,6 +93,7 @@
     "card-eb05-heroines-v2-bookoff-tsunashima-tarumachi-2026-10-29",
     "card-eb05-heroines-v2-bookoff-wakayama-kokutai-doro-20261029",
     "card-eb05-heroines-v2-bookoff-yokkaichi-hinaga-2026-10-29",
+    "card-eb05-heroines-v2-bungyodo-gyotoku-2026-10-27",
     "card-eb05-heroines-v2-card-shop-irodori-2026-10-27",
     "card-eb05-heroines-v2-card-stadium-oroku-2026-10-27",
     "card-eb05-heroines-v2-cardbox-funabashi-2026-10-26",
@@ -213,6 +214,7 @@
     "card-op18-kami-no-shihai-cardbox-osaka-2026-11-03",
     "card-op18-kami-no-shihai-cardbox-tsu-2026-11-03",
     "card-op18-kami-no-shihai-lit-tenjin-kokura-2026-11-21",
+    "card-op18-kami-no-shihai-tsutaya-yamaguchi-aoi-2026-11-01",
     "card-uketsugareru-ishi-amazon-jp-none",
     "card-uketsugareru-ishi-furu1-malera-gifu-2026-08-22"
   ],
@@ -265,7 +267,7 @@
   "カードラボ 名古屋駅前店": true,
   "トイザらス ポケモン": false,
   "プレイズ 公式通販": false,
-  "ホビーステーション ニュース": false,
+  "ホビーステーション ニュース": true,
   "ポケモンセンターオンライン 新商品": false,
   "ヨドバシ.com ポケモンカード": false,
   "三洋堂書店 抽選販売": false
